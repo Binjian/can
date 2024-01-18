@@ -1,0 +1,326 @@
+TQD_trqTrqSetNormal_MAP_v
+
+AXIS_DESCR:
+- TQD_vVehSpd
+TQD_vSgndSpd_MAP_y
+- TQD_pctAccPedPosFlt
+TQD_pctAccPdl_MAP_x
+
+    /begin CHARACTERISTIC
+      /* Name                   */      TQD_trqTrqSetNormal_MAP_v
+      /* Long Identifier        */      ""
+      /* Characteristic Type    */      MAP
+      /* ECU Address            */      0x7000aa2a
+      /* Record Layout          */      Lookup2D_FLOAT32_IEEE
+      /* Maxdiff                */      0
+      /* Conversion Method      */      VBU_L045A_CWP_05_09T_AImode_CM_single
+      /* Lower Limit            */      -3.4E+38
+      /* Upper Limit            */      3.4E+38
+      /begin AXIS_DESCR
+        /* Description of Y-Axis Points */
+        /* Axis Type            */      COM_AXIS
+        /* Reference to Input   */      TQD_vVehSpd
+        /* Conversion Method    */      VBU_L045A_CWP_05_09T_AImode_CM_single
+        /* Number of Axis Pts   */      14
+        /* Lower Limit          */      -3.4E+38
+        /* Upper Limit          */      3.4E+38
+        AXIS_PTS_REF                    TQD_vSgndSpd_MAP_y
+      /end AXIS_DESCR
+      /begin AXIS_DESCR
+        /* Description of X-Axis Points */
+        /* Axis Type            */      COM_AXIS
+        /* Reference to Input   */      TQD_pctAccPedPosFlt
+        /* Conversion Method    */      VBU_L045A_CWP_05_09T_AImode_CM_single
+        /* Number of Axis Pts   */      17
+        /* Lower Limit          */      -3.4E+38
+        /* Upper Limit          */      3.4E+38
+        AXIS_PTS_REF                    TQD_pctAccPdl_MAP_x
+      /end AXIS_DESCR
+    /end CHARACTERISTIC
+
+
+/begin GROUP
+      /* Name                   */       S1121_TrqDem_DrvTrq_Cal
+      /* Long identifier        */       "VBU_L045A_CWP_05_09T_AImode/ASW10ms_Task/TQD/TrqDem/Subsystem/TrqDem_DrvTrq_Cal/TrqDem_DrvTrq_Cal"
+      /begin REF_CHARACTERISTIC
+        TQD_facTrqDesGrR_CUR_v
+        TQD_trqTrqSetNormalAI_MAP_v
+        TQD_trqTrqSetNormal_MAP_v
+      /end REF_CHARACTERISTIC
+      /begin REF_MEASUREMENT
+        TQD_facDesTrqGr
+        TQD_trqDesRaw
+        TQD_trqZrPed
+      /end REF_MEASUREMENT
+    /end GROUP
+
+
+        "CHARACTERISTIC": [
+          {
+            "Name": {
+              "Value": "TQD_trqTrqSetNormal_MAP_v"
+            },
+            "LongIdentifier": {},
+            "Type": "MAP",
+            "Address": {
+              "Value": "1879091754",
+              "Base": 16,
+              "Size": 8
+            },
+            "Deposit": {
+              "Value": "Lookup2D_FLOAT32_IEEE"
+            },
+            "MaxDiff": {},
+            "Conversion": {
+              "Value": "VBU_L045A_CWP_05_09T_AImode_CM_single"
+            },
+            "LowerLimit": {
+              "Value": -3.4e+38,
+              "IntegralSign": "-",
+              "IntegralSize": 1,
+              "DecimalSize": 5
+            },
+            "UpperLimit": {
+              "Value": 3.4e+38,
+              "IntegralSize": 1,
+              "DecimalSize": 5
+            },
+            "AXIS_DESCR": [
+              {
+                "Attribute": "COM_AXIS",
+                "InputQuantity": {
+                  "Value": "TQD_vVehSpd"
+                },
+                "Conversion": {
+                  "Value": "VBU_L045A_CWP_05_09T_AImode_CM_single"
+                },
+                "MaxAxisPoints": {
+                  "Value": 14,
+                  "Base": 10,
+                  "Size": 2
+                },
+                "LowerLimit": {
+                  "Value": -3.4e+38,
+                  "IntegralSign": "-",
+                  "IntegralSize": 1,
+                  "DecimalSize": 5
+                },
+                "UpperLimit": {
+                  "Value": 3.4e+38,
+                  "IntegralSize": 1,
+                  "DecimalSize": 5
+                },
+                "AXIS_PTS_REF": {
+                  "AxisPoints": {
+                    "Value": "TQD_vSgndSpd_MAP_y"
+                  }
+                }
+              },
+              {
+                "Attribute": "COM_AXIS",
+                "InputQuantity": {
+                  "Value": "TQD_pctAccPedPosFlt"
+                },
+                "Conversion": {
+                  "Value": "VBU_L045A_CWP_05_09T_AImode_CM_single"
+                },
+                "MaxAxisPoints": {
+                  "Value": 17,
+                  "Base": 10,
+                  "Size": 2
+                },
+                "LowerLimit": {
+                  "Value": -3.4e+38,
+                  "IntegralSign": "-",
+                  "IntegralSize": 1,
+                  "DecimalSize": 5
+                },
+                "UpperLimit": {
+                  "Value": 3.4e+38,
+                  "IntegralSize": 1,
+                  "DecimalSize": 5
+                },
+                "AXIS_PTS_REF": {
+                  "AxisPoints": {
+                    "Value": "TQD_pctAccPdl_MAP_x"
+                  }
+                }
+              }
+            ]
+          },
+
+
+          {
+            "Name": {
+              "Value": "TQD_vVehSpd"
+            },
+            "LongIdentifier": {},
+            "DataType": {
+              "Value": "FLOAT32_IEEE"
+            },
+            "Conversion": {
+              "Value": "VBU_L045A_CWP_05_09T_AImode_CM_single"
+            },
+            "Resolution": {
+              "Base": 10,
+              "Size": 1
+            },
+            "Accuracy": {},
+            "LowerLimit": {
+              "Value": -3.4e+38,
+              "IntegralSign": "-",
+              "IntegralSize": 1,
+              "DecimalSize": 5
+            },
+            "UpperLimit": {
+              "Value": 3.4e+38,
+              "IntegralSize": 1,
+              "DecimalSize": 5
+            },
+            "ECU_ADDRESS": {
+              "Address": {
+                "Value": "1879113976",
+                "Base": 16,
+                "Size": 8
+              }
+            }
+          },
+
+          {
+            "Name": {
+              "Value": "TQD_vSgndSpd_MAP_y"
+            },
+            "LongIdentifier": {},
+            "Address": {
+              "Value": "1879071450",
+              "Base": 16,
+              "Size": 8
+            },
+            "InputQuantity": {
+              "Value": "TQD_vVehSpd"
+            },
+            "DepositR": {
+              "Value": "Lookup2D_X_FLOAT32_IEEE"
+            },
+            "MaxDiff": {},
+            "Conversion": {
+              "Value": "VBU_L045A_CWP_05_09T_AImode_CM_single"
+            },
+            "MaxAxisPoints": {
+              "Value": 14,
+              "Base": 10,
+              "Size": 2
+            },
+            "LowerLimit": {
+              "Value": -3.4e+38,
+              "IntegralSign": "-",
+              "IntegralSize": 1,
+              "DecimalSize": 5
+            },
+            "UpperLimit": {
+              "Value": 3.4e+38,
+              "IntegralSize": 1,
+              "DecimalSize": 5
+            }
+          },
+
+
+          {
+            "Name": {
+              "Value": "TQD_pctAccPedPosFlt"
+            },
+            "LongIdentifier": {},
+            "DataType": {
+              "Value": "FLOAT32_IEEE"
+            },
+            "Conversion": {
+              "Value": "VBU_L045A_CWP_05_09T_AImode_CM_single"
+            },
+            "Resolution": {
+              "Base": 10,
+              "Size": 1
+            },
+            "Accuracy": {},
+            "LowerLimit": {
+              "Value": -3.4e+38,
+              "IntegralSign": "-",
+              "IntegralSize": 1,
+              "DecimalSize": 5
+            },
+            "UpperLimit": {
+              "Value": 3.4e+38,
+              "IntegralSize": 1,
+              "DecimalSize": 5
+            },
+            "ECU_ADDRESS": {
+              "Address": {
+                "Value": "1879113888",
+                "Base": 16,
+                "Size": 8
+              }
+            }
+          },
+
+          {
+            "Name": {
+              "Value": "TQD_pctAccPdl_MAP_x"
+            },
+            "LongIdentifier": {},
+            "Address": {
+              "Value": "1879073310",
+              "Base": 16,
+              "Size": 8
+            },
+            "InputQuantity": {
+              "Value": "TQD_pctAccPedPosFlt"
+            },
+            "DepositR": {
+              "Value": "Lookup2D_X_FLOAT32_IEEE"
+            },
+            "MaxDiff": {},
+            "Conversion": {
+              "Value": "VBU_L045A_CWP_05_09T_AImode_CM_single"
+            },
+            "MaxAxisPoints": {
+              "Value": 17,
+              "Base": 10,
+              "Size": 2
+            },
+            "LowerLimit": {
+              "Value": -3.4e+38,
+              "IntegralSign": "-",
+              "IntegralSize": 1,
+              "DecimalSize": 5
+            },
+            "UpperLimit": {
+              "Value": 3.4e+38,
+              "IntegralSize": 1,
+              "DecimalSize": 5
+            }
+          },
+          {
+            "Name": {
+              "Value": "VBU_L045A_CWP_05_09T_AImode_CM_single"
+            },
+            "LongIdentifier": {
+              "Value": "Q = V"
+            },
+            "ConversionType": "RAT_FUNC",
+            "Format": {
+              "Value": "%8.6"
+            },
+            "Unit": {},
+            "COEFFS": {
+              "A": {},
+              "B": {
+                "Value": 1
+              },
+              "C": {},
+              "D": {},
+              "E": {},
+              "F": {
+                "Value": 1
+              }
+            }
+          },          
+          

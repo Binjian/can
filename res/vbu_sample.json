@@ -1,0 +1,1289 @@
+{
+  "ASAP2_VERSION": {
+    "VersionNo": {
+      "Value": 1,
+      "Base": 10,
+      "Size": 1
+    },
+    "UpgradeNo": {
+      "Value": 31,
+      "Base": 10,
+      "Size": 2
+    }
+  },
+  "PROJECT": {
+    "Name": {
+      "Value": "ProjectName"
+    },
+    "LongIdentifier": {
+      "Value": "Project Comment Goes Here"
+    },
+    "HEADER": {
+      "Comment": {
+        "Value": "Header Comments go here"
+      }
+    },
+    "MODULE": [
+      {
+        "Name": {
+          "Value": "ModuleName"
+        },
+        "LongIdentifier": {
+          "Value": "Module Comment Goes Here"
+        },
+        "MOD_PAR": {
+          "Comment": {
+            "Value": "MOD PAR Comment Goes Here"
+          },
+          "ECU_CALIBRATION_OFFSET": {
+            "Offset": {
+              "Base": 16,
+              "Size": 8
+            }
+          },
+          "MEMORY_SEGMENT": [
+            {
+              "Name": {
+                "Value": "CAL"
+              },
+              "LongIdentifier": {},
+              "PrgType": "DATA",
+              "MemoryType": "FLASH",
+              "Attribute": "INTERN",
+              "Address": {
+                "Value": "1879048192",
+                "Base": 16,
+                "Size": 8
+              },
+              "Size": {
+                "Value": "69955",
+                "Base": 16,
+                "Size": 5
+              },
+              "Offset": [
+                {
+                  "Value": "-1",
+                  "Base": 10,
+                  "Size": 2
+                },
+                {
+                  "Value": "-1",
+                  "Base": 10,
+                  "Size": 2
+                },
+                {
+                  "Value": "-1",
+                  "Base": 10,
+                  "Size": 2
+                },
+                {
+                  "Value": "-1",
+                  "Base": 10,
+                  "Size": 2
+                },
+                {
+                  "Value": "-1",
+                  "Base": 10,
+                  "Size": 2
+                }
+              ]
+            },
+            {
+              "Name": {
+                "Value": "MeasRAM"
+              },
+              "LongIdentifier": {},
+              "PrgType": "VARIABLES",
+              "MemoryType": "RAM",
+              "Attribute": "INTERN",
+              "Address": {
+                "Value": "1879118148",
+                "Base": 16,
+                "Size": 8
+              },
+              "Size": {
+                "Value": "3807",
+                "Base": 16,
+                "Size": 3
+              },
+              "Offset": [
+                {
+                  "Value": "-1",
+                  "Base": 10,
+                  "Size": 2
+                },
+                {
+                  "Value": "-1",
+                  "Base": 10,
+                  "Size": 2
+                },
+                {
+                  "Value": "-1",
+                  "Base": 10,
+                  "Size": 2
+                },
+                {
+                  "Value": "-1",
+                  "Base": 10,
+                  "Size": 2
+                },
+                {
+                  "Value": "-1",
+                  "Base": 10,
+                  "Size": 2
+                }
+              ]
+            }
+          ]
+        },
+        "MOD_COMMON": {
+          "Comment": {
+            "Value": "Mod Common Comment Here"
+          },
+          "BYTE_ORDER": {
+            "ByteOrder": "MSB_LAST"
+          },
+          "ALIGNMENT_WORD": {
+            "AlignmentBorder": {
+              "Value": 1,
+              "Base": 10,
+              "Size": 1
+            }
+          },
+          "ALIGNMENT_LONG": {
+            "AlignmentBorder": {
+              "Value": 1,
+              "Base": 10,
+              "Size": 1
+            }
+          },
+          "ALIGNMENT_FLOAT32_IEEE": {
+            "AlignmentBorder": {
+              "Value": 1,
+              "Base": 10,
+              "Size": 1
+            }
+          },
+          "ALIGNMENT_FLOAT64_IEEE": {
+            "AlignmentBorder": {
+              "Value": 1,
+              "Base": 10,
+              "Size": 1
+            }
+          }
+        },
+        "IF_DATA": [
+          {
+            "Name": {
+              "Value": "ASAP1B_CCP"
+            },
+            "Blob": [
+              {
+                "Generic": {
+                  "Name": {
+                    "Value": "SOURCE"
+                  },
+                  "Element": [
+                    {
+                      "String": {
+                        "Value": "List 1 Rate 10 ms"
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Base": 10,
+                        "Size": 1
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Base": 10,
+                        "Size": 1
+                      }
+                    },
+                    {
+                      "Generic": {
+                        "Name": {
+                          "Value": "QP_BLOB"
+                        },
+                        "Element": [
+                          {
+                            "Long": {
+                              "Base": 10,
+                              "Size": 1
+                            }
+                          },
+                          {
+                            "Identifier": {
+                              "Value": "LENGTH"
+                            }
+                          },
+                          {
+                            "Long": {
+                              "Value": "10",
+                              "Base": 10,
+                              "Size": 2
+                            }
+                          },
+                          {
+                            "Identifier": {
+                              "Value": "CAN_ID_FIXED"
+                            }
+                          },
+                          {
+                            "Long": {
+                              "Value": "1585",
+                              "Base": 16,
+                              "Size": 3
+                            }
+                          },
+                          {
+                            "Identifier": {
+                              "Value": "RASTER"
+                            }
+                          },
+                          {
+                            "Long": {
+                              "Base": 10,
+                              "Size": 1
+                            }
+                          },
+                          {
+                            "Identifier": {
+                              "Value": "REDUCTION_ALLOWED"
+                            }
+                          },
+                          {
+                            "Identifier": {
+                              "Value": "FIRST_PID"
+                            }
+                          },
+                          {
+                            "Long": {
+                              "Base": 10,
+                              "Size": 1
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "Generic": {
+                  "Name": {
+                    "Value": "SOURCE"
+                  },
+                  "Element": [
+                    {
+                      "String": {
+                        "Value": "List 2 Rate 20 ms"
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Base": 10,
+                        "Size": 1
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Base": 10,
+                        "Size": 1
+                      }
+                    },
+                    {
+                      "Generic": {
+                        "Name": {
+                          "Value": "QP_BLOB"
+                        },
+                        "Element": [
+                          {
+                            "Long": {
+                              "Value": "1",
+                              "Base": 10,
+                              "Size": 1
+                            }
+                          },
+                          {
+                            "Identifier": {
+                              "Value": "LENGTH"
+                            }
+                          },
+                          {
+                            "Long": {
+                              "Value": "16",
+                              "Base": 10,
+                              "Size": 2
+                            }
+                          },
+                          {
+                            "Identifier": {
+                              "Value": "CAN_ID_FIXED"
+                            }
+                          },
+                          {
+                            "Long": {
+                              "Value": "1585",
+                              "Base": 16,
+                              "Size": 3
+                            }
+                          },
+                          {
+                            "Identifier": {
+                              "Value": "RASTER"
+                            }
+                          },
+                          {
+                            "Long": {
+                              "Value": "1",
+                              "Base": 10,
+                              "Size": 1
+                            }
+                          },
+                          {
+                            "Identifier": {
+                              "Value": "REDUCTION_ALLOWED"
+                            }
+                          },
+                          {
+                            "Identifier": {
+                              "Value": "FIRST_PID"
+                            }
+                          },
+                          {
+                            "Long": {
+                              "Value": "10",
+                              "Base": 10,
+                              "Size": 2
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "Generic": {
+                  "Name": {
+                    "Value": "SOURCE"
+                  },
+                  "Element": [
+                    {
+                      "String": {
+                        "Value": "List 3 Rate 50 ms"
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Base": 10,
+                        "Size": 1
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Base": 10,
+                        "Size": 1
+                      }
+                    },
+                    {
+                      "Generic": {
+                        "Name": {
+                          "Value": "QP_BLOB"
+                        },
+                        "Element": [
+                          {
+                            "Long": {
+                              "Value": "2",
+                              "Base": 10,
+                              "Size": 1
+                            }
+                          },
+                          {
+                            "Identifier": {
+                              "Value": "LENGTH"
+                            }
+                          },
+                          {
+                            "Long": {
+                              "Value": "20",
+                              "Base": 10,
+                              "Size": 2
+                            }
+                          },
+                          {
+                            "Identifier": {
+                              "Value": "CAN_ID_FIXED"
+                            }
+                          },
+                          {
+                            "Long": {
+                              "Value": "1585",
+                              "Base": 16,
+                              "Size": 3
+                            }
+                          },
+                          {
+                            "Identifier": {
+                              "Value": "RASTER"
+                            }
+                          },
+                          {
+                            "Long": {
+                              "Value": "2",
+                              "Base": 10,
+                              "Size": 1
+                            }
+                          },
+                          {
+                            "Identifier": {
+                              "Value": "REDUCTION_ALLOWED"
+                            }
+                          },
+                          {
+                            "Identifier": {
+                              "Value": "FIRST_PID"
+                            }
+                          },
+                          {
+                            "Long": {
+                              "Value": "26",
+                              "Base": 10,
+                              "Size": 2
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "Generic": {
+                  "Name": {
+                    "Value": "SOURCE"
+                  },
+                  "Element": [
+                    {
+                      "String": {
+                        "Value": "List 4 Rate 200 ms"
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Base": 10,
+                        "Size": 1
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Base": 10,
+                        "Size": 1
+                      }
+                    },
+                    {
+                      "Generic": {
+                        "Name": {
+                          "Value": "QP_BLOB"
+                        },
+                        "Element": [
+                          {
+                            "Long": {
+                              "Value": "3",
+                              "Base": 10,
+                              "Size": 1
+                            }
+                          },
+                          {
+                            "Identifier": {
+                              "Value": "LENGTH"
+                            }
+                          },
+                          {
+                            "Long": {
+                              "Value": "20",
+                              "Base": 10,
+                              "Size": 2
+                            }
+                          },
+                          {
+                            "Identifier": {
+                              "Value": "CAN_ID_FIXED"
+                            }
+                          },
+                          {
+                            "Long": {
+                              "Value": "1585",
+                              "Base": 16,
+                              "Size": 3
+                            }
+                          },
+                          {
+                            "Identifier": {
+                              "Value": "RASTER"
+                            }
+                          },
+                          {
+                            "Long": {
+                              "Value": "3",
+                              "Base": 10,
+                              "Size": 1
+                            }
+                          },
+                          {
+                            "Identifier": {
+                              "Value": "REDUCTION_ALLOWED"
+                            }
+                          },
+                          {
+                            "Identifier": {
+                              "Value": "FIRST_PID"
+                            }
+                          },
+                          {
+                            "Long": {
+                              "Value": "46",
+                              "Base": 10,
+                              "Size": 2
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "Generic": {
+                  "Name": {
+                    "Value": "RASTER"
+                  },
+                  "Element": [
+                    {
+                      "String": {
+                        "Value": "FGND_1"
+                      }
+                    },
+                    {
+                      "String": {
+                        "Value": "FGND_1"
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Base": 10,
+                        "Size": 1
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Value": "3",
+                        "Base": 10,
+                        "Size": 1
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Value": "10",
+                        "Base": 10,
+                        "Size": 2
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "Generic": {
+                  "Name": {
+                    "Value": "RASTER"
+                  },
+                  "Element": [
+                    {
+                      "String": {
+                        "Value": "FGND_2"
+                      }
+                    },
+                    {
+                      "String": {
+                        "Value": "FGND_2"
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Value": "1",
+                        "Base": 10,
+                        "Size": 1
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Value": "3",
+                        "Base": 10,
+                        "Size": 1
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Value": "20",
+                        "Base": 10,
+                        "Size": 2
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "Generic": {
+                  "Name": {
+                    "Value": "RASTER"
+                  },
+                  "Element": [
+                    {
+                      "String": {
+                        "Value": "FGND_5"
+                      }
+                    },
+                    {
+                      "String": {
+                        "Value": "FGND_5"
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Value": "2",
+                        "Base": 10,
+                        "Size": 1
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Value": "3",
+                        "Base": 10,
+                        "Size": 1
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Value": "50",
+                        "Base": 10,
+                        "Size": 2
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "Generic": {
+                  "Name": {
+                    "Value": "RASTER"
+                  },
+                  "Element": [
+                    {
+                      "String": {
+                        "Value": "FGND_20"
+                      }
+                    },
+                    {
+                      "String": {
+                        "Value": "FGND_20"
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Value": "3",
+                        "Base": 10,
+                        "Size": 1
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Value": "3",
+                        "Base": 10,
+                        "Size": 1
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Value": "200",
+                        "Base": 10,
+                        "Size": 3
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "Generic": {
+                  "Name": {
+                    "Value": "TP_BLOB"
+                  },
+                  "Element": [
+                    {
+                      "Long": {
+                        "Value": "513",
+                        "Base": 16,
+                        "Size": 3
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Value": "516",
+                        "Base": 16,
+                        "Size": 3
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Value": "1584",
+                        "Base": 16,
+                        "Size": 3
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Value": "1585",
+                        "Base": 16,
+                        "Size": 3
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Value": "1",
+                        "Base": 16,
+                        "Size": 1
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Value": "2",
+                        "Base": 10,
+                        "Size": 1
+                      }
+                    },
+                    {
+                      "Identifier": {
+                        "Value": "BAUDRATE"
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Value": "500000",
+                        "Base": 10,
+                        "Size": 6
+                      }
+                    },
+                    {
+                      "Identifier": {
+                        "Value": "SAMPLE_RATE"
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Value": "1",
+                        "Base": 10,
+                        "Size": 1
+                      }
+                    },
+                    {
+                      "Identifier": {
+                        "Value": "SAMPLE_POINT"
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Value": "80",
+                        "Base": 10,
+                        "Size": 2
+                      }
+                    },
+                    {
+                      "Identifier": {
+                        "Value": "BTL_CYCLES"
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Value": "19",
+                        "Base": 10,
+                        "Size": 2
+                      }
+                    },
+                    {
+                      "Identifier": {
+                        "Value": "SJW"
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Value": "4",
+                        "Base": 10,
+                        "Size": 1
+                      }
+                    },
+                    {
+                      "Identifier": {
+                        "Value": "SYNC_EDGE"
+                      }
+                    },
+                    {
+                      "Identifier": {
+                        "Value": "SINGLE"
+                      }
+                    },
+                    {
+                      "Identifier": {
+                        "Value": "DAQ_MODE"
+                      }
+                    },
+                    {
+                      "Identifier": {
+                        "Value": "BURST"
+                      }
+                    },
+                    {
+                      "Identifier": {
+                        "Value": "CONSISTENCY"
+                      }
+                    },
+                    {
+                      "Identifier": {
+                        "Value": "ODT"
+                      }
+                    },
+                    {
+                      "Identifier": {
+                        "Value": "ADDRESS_EXTENSION"
+                      }
+                    },
+                    {
+                      "Identifier": {
+                        "Value": "DAQ"
+                      }
+                    },
+                    {
+                      "Generic": {
+                        "Name": {
+                          "Value": "CHECKSUM_PARAM"
+                        },
+                        "Element": [
+                          {
+                            "Long": {
+                              "Base": 16,
+                              "Size": 4
+                            }
+                          },
+                          {
+                            "Long": {
+                              "Value": "4294967295",
+                              "Base": 16,
+                              "Size": 8
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "Generic": {
+                        "Name": {
+                          "Value": "DEFINED_PAGES"
+                        },
+                        "Element": [
+                          {
+                            "Long": {
+                              "Value": "1",
+                              "Base": 10,
+                              "Size": 1
+                            }
+                          },
+                          {
+                            "String": {
+                              "Value": "working page"
+                            }
+                          },
+                          {
+                            "Long": {
+                              "Base": 16,
+                              "Size": 2
+                            }
+                          },
+                          {
+                            "Long": {
+                              "Value": "1879048192",
+                              "Base": 16,
+                              "Size": 8
+                            }
+                          },
+                          {
+                            "Long": {
+                              "Value": "69955",
+                              "Base": 16,
+                              "Size": 5
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "Identifier": {
+                        "Value": "OPTIONAL_CMD"
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Value": "5",
+                        "Base": 16,
+                        "Size": 1
+                      }
+                    },
+                    {
+                      "Identifier": {
+                        "Value": "OPTIONAL_CMD"
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Value": "8",
+                        "Base": 16,
+                        "Size": 1
+                      }
+                    },
+                    {
+                      "Identifier": {
+                        "Value": "OPTIONAL_CMD"
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Value": "15",
+                        "Base": 16,
+                        "Size": 1
+                      }
+                    },
+                    {
+                      "Identifier": {
+                        "Value": "OPTIONAL_CMD"
+                      }
+                    },
+                    {
+                      "Long": {
+                        "Value": "35",
+                        "Base": 16,
+                        "Size": 2
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ],
+        "CHARACTERISTIC": [
+          {
+            "Name": {
+              "Value": "TQD_trqTrqSetNormal_MAP_v"
+            },
+            "LongIdentifier": {},
+            "Type": "MAP",
+            "Address": {
+              "Value": "1879091754",
+              "Base": 16,
+              "Size": 8
+            },
+            "Deposit": {
+              "Value": "Lookup2D_FLOAT32_IEEE"
+            },
+            "MaxDiff": {},
+            "Conversion": {
+              "Value": "VBU_L045A_CWP_05_09T_AImode_CM_single"
+            },
+            "LowerLimit": {
+              "Value": -3.4e+38,
+              "IntegralSign": "-",
+              "IntegralSize": 1,
+              "DecimalSize": 5
+            },
+            "UpperLimit": {
+              "Value": 3.4e+38,
+              "IntegralSize": 1,
+              "DecimalSize": 5
+            },
+            "AXIS_DESCR": [
+              {
+                "Attribute": "COM_AXIS",
+                "InputQuantity": {
+                  "Value": "TQD_vVehSpd"
+                },
+                "Conversion": {
+                  "Value": "VBU_L045A_CWP_05_09T_AImode_CM_single"
+                },
+                "MaxAxisPoints": {
+                  "Value": 14,
+                  "Base": 10,
+                  "Size": 2
+                },
+                "LowerLimit": {
+                  "Value": -3.4e+38,
+                  "IntegralSign": "-",
+                  "IntegralSize": 1,
+                  "DecimalSize": 5
+                },
+                "UpperLimit": {
+                  "Value": 3.4e+38,
+                  "IntegralSize": 1,
+                  "DecimalSize": 5
+                },
+                "AXIS_PTS_REF": {
+                  "AxisPoints": {
+                    "Value": "TQD_vSgndSpd_MAP_y"
+                  }
+                }
+              },
+              {
+                "Attribute": "COM_AXIS",
+                "InputQuantity": {
+                  "Value": "TQD_pctAccPedPosFlt"
+                },
+                "Conversion": {
+                  "Value": "VBU_L045A_CWP_05_09T_AImode_CM_single"
+                },
+                "MaxAxisPoints": {
+                  "Value": 17,
+                  "Base": 10,
+                  "Size": 2
+                },
+                "LowerLimit": {
+                  "Value": -3.4e+38,
+                  "IntegralSign": "-",
+                  "IntegralSize": 1,
+                  "DecimalSize": 5
+                },
+                "UpperLimit": {
+                  "Value": 3.4e+38,
+                  "IntegralSize": 1,
+                  "DecimalSize": 5
+                },
+                "AXIS_PTS_REF": {
+                  "AxisPoints": {
+                    "Value": "TQD_pctAccPdl_MAP_x"
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "MEASUREMENT": [
+          {
+            "Name": {
+              "Value": "TQD_vVehSpd"
+            },
+            "LongIdentifier": {},
+            "DataType": {
+              "Value": "FLOAT32_IEEE"
+            },
+            "Conversion": {
+              "Value": "VBU_L045A_CWP_05_09T_AImode_CM_single"
+            },
+            "Resolution": {
+              "Base": 10,
+              "Size": 1
+            },
+            "Accuracy": {},
+            "LowerLimit": {
+              "Value": -3.4e+38,
+              "IntegralSign": "-",
+              "IntegralSize": 1,
+              "DecimalSize": 5
+            },
+            "UpperLimit": {
+              "Value": 3.4e+38,
+              "IntegralSize": 1,
+              "DecimalSize": 5
+            },
+            "ECU_ADDRESS": {
+              "Address": {
+                "Value": "1879113976",
+                "Base": 16,
+                "Size": 8
+              }
+            }
+          },
+          {
+            "Name": {
+              "Value": "TQD_pctAccPedPosFlt"
+            },
+            "LongIdentifier": {},
+            "DataType": {
+              "Value": "FLOAT32_IEEE"
+            },
+            "Conversion": {
+              "Value": "VBU_L045A_CWP_05_09T_AImode_CM_single"
+            },
+            "Resolution": {
+              "Base": 10,
+              "Size": 1
+            },
+            "Accuracy": {},
+            "LowerLimit": {
+              "Value": -3.4e+38,
+              "IntegralSign": "-",
+              "IntegralSize": 1,
+              "DecimalSize": 5
+            },
+            "UpperLimit": {
+              "Value": 3.4e+38,
+              "IntegralSize": 1,
+              "DecimalSize": 5
+            },
+            "ECU_ADDRESS": {
+              "Address": {
+                "Value": "1879113888",
+                "Base": 16,
+                "Size": 8
+              }
+            }
+          }
+        ],
+        "AXIS_PTS": [
+          {
+
+            "Name": {
+              "Value": "TQD_vSgndSpd_MAP_y"
+            },
+            "LongIdentifier": {},
+            "Address": {
+              "Value": "1879071450",
+              "Base": 16,
+              "Size": 8
+            },
+            "InputQuantity": {
+              "Value": "TQD_vVehSpd"
+            },
+            "DepositR": {
+              "Value": "Lookup2D_X_FLOAT32_IEEE"
+            },
+            "MaxDiff": {},
+            "Conversion": {
+              "Value": "VBU_L045A_CWP_05_09T_AImode_CM_single"
+            },
+            "MaxAxisPoints": {
+              "Value": 14,
+              "Base": 10,
+              "Size": 2
+            },
+            "LowerLimit": {
+              "Value": -3.4e+38,
+              "IntegralSign": "-",
+              "IntegralSize": 1,
+              "DecimalSize": 5
+            },
+            "UpperLimit": {
+              "Value": 3.4e+38,
+              "IntegralSize": 1,
+              "DecimalSize": 5
+            }
+          },
+          {
+            "Name": {
+              "Value": "TQD_pctAccPdl_MAP_x"
+            },
+            "LongIdentifier": {},
+            "Address": {
+              "Value": "1879073310",
+              "Base": 16,
+              "Size": 8
+            },
+            "InputQuantity": {
+              "Value": "TQD_pctAccPedPosFlt"
+            },
+            "DepositR": {
+              "Value": "Lookup2D_X_FLOAT32_IEEE"
+            },
+            "MaxDiff": {},
+            "Conversion": {
+              "Value": "VBU_L045A_CWP_05_09T_AImode_CM_single"
+            },
+            "MaxAxisPoints": {
+              "Value": 17,
+              "Base": 10,
+              "Size": 2
+            },
+            "LowerLimit": {
+              "Value": -3.4e+38,
+              "IntegralSign": "-",
+              "IntegralSize": 1,
+              "DecimalSize": 5
+            },
+            "UpperLimit": {
+              "Value": 3.4e+38,
+              "IntegralSize": 1,
+              "DecimalSize": 5
+            }
+          }
+        ],
+        "COMPU_METHOD": [
+          {
+            "Name": {
+              "Value": "VBU_L045A_CWP_05_09T_AImode_CM_single"
+            },
+            "LongIdentifier": {
+              "Value": "Q = V"
+            },
+            "ConversionType": "RAT_FUNC",
+            "Format": {
+              "Value": "%8.6"
+            },
+            "Unit": {},
+            "COEFFS": {
+              "A": {},
+              "B": {
+                "Value": 1
+              },
+              "C": {},
+              "D": {},
+              "E": {},
+              "F": {
+                "Value": 1
+              }
+            }
+          }
+        ],
+        "GROUP": [
+          {
+            "GroupName": {
+              "Value": "S3859_TrqDem_DrvTrq_Cal"
+            },
+            "GroupLongIdentifier": {
+              "Value": "VBU0706/Task_10ms/Subsystem/VCU /TQD/TrqDem/TrqDem_DrvTrq_Cal/TrqDem_DrvTrq_Cal"
+            },
+            "REF_CHARACTERISTIC": {
+              "Identifier": [
+                {
+                  "Value": "TQD_facTrqDesGrR_CUR_v"
+                },
+                {
+                  "Value": "TQD_trqTrqSetNormal_MAP_v"
+                }
+              ]
+            },
+            "REF_MEASUREMENT": {
+              "Identifier": [
+                {
+                  "Value": "TQD_facDesTrqGr"
+                },
+                {
+                  "Value": "TQD_trqDesRaw"
+                },
+                {
+                  "Value": "TQD_trqZrPed"
+                }
+              ]
+            }
+          }
+        ]
+      }
+		]
+  }
+}
+

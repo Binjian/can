@@ -1,0 +1,9 @@
+project:
+  output-dir: _docs
+
+website:
+  title: "can"
+  site-url: "https://Binjian.github.io/can"
+  description: "can interface to tspace"
+  repo-branch: main
+  repo-url: "https://github.com/Binjian/can"
