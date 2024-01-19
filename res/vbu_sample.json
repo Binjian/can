@@ -1281,7 +1281,106 @@
               ]
             }
           }
-        ]
+        ],
+        "RECORD_LAYOUT": [
+          {          
+            "Name": {
+              "Value": "Scalar_FLOAT32_IEEE"
+            },
+            "FNC_VALUES": {
+              "Position": {
+                "Value": 1,
+                "Base": 10,
+                "Size": 1
+              },
+              "DataType": {
+                "Value": "FLOAT32_IEEE"
+              },
+              "IndexMode": "COLUMN_DIR",
+              "AddressType": {
+                "Value": "DIRECT"
+              }
+            }
+          },
+          {
+            "Name": {
+              "Value": "Scalar_BOOLEAN"
+            },
+            "FNC_VALUES": {
+              "Position": {
+                "Value": 1,
+                "Base": 10,
+                "Size": 1
+              },
+              "DataType": {
+                "Value": "UBYTE"
+              },
+              "IndexMode": "COLUMN_DIR",
+              "AddressType": {
+                "Value": "DIRECT"
+              }
+            }
+          },
+          {
+            "Name": {
+              "Value": "Lookup2D_FLOAT32_IEEE"
+            },
+            "FNC_VALUES": {
+              "Position": {
+                "Value": 1,
+                "Base": 10,
+                "Size": 1
+              },
+              "DataType": {
+                "Value": "FLOAT32_IEEE"
+              },
+              "IndexMode": "COLUMN_DIR",
+              "AddressType": {
+                "Value": "DIRECT"
+              }
+            }
+          },
+          {
+            "Name": {
+              "Value": "Lookup2D_X_FLOAT32_IEEE"
+            },
+            "AXIS_PTS_X": {
+              "Position": {
+                "Value": 1,
+                "Base": 10,
+                "Size": 1
+              },
+              "DataType": {
+                "Value": "FLOAT32_IEEE"
+              },
+              "IndexIncr": {
+                "Value": "INDEX_INCR"
+              },
+              "Addressing": {
+                "Value": "DIRECT"
+              }
+            }
+          },
+          {
+            "Name": {
+              "Value": "Lookup2D_FLOAT64_IEEE"
+            },
+            "FNC_VALUES": {
+              "Position": {
+                "Value": 1,
+                "Base": 10,
+                "Size": 1
+              },
+              "DataType": {
+                "Value": "FLOAT64_IEEE"
+              },
+              "IndexMode": "COLUMN_DIR",
+              "AddressType": {
+                "Value": "DIRECT"
+              }
+            }
+          }
+        ]       
       }
 		]
   }

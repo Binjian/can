@@ -2,14 +2,14 @@
 
 # %% auto 0
 __all__ = ['parser', 'args', 'list_of_strings', 'JsonNodePathSegment', 'JsonNodePath', 'get_argparser', 'Bunch', 'Record',
-           'Calibration', 'Measurement', 'AxisScale', 'DataType', 'load_class_type_a2l_lazy', 'load_records_lazy',
-           'load_a2l_lazy', 'load_a2l_eager']
+           'Calibration', 'Measurement', 'AxisScale', 'DataConversion', 'DataLayout', 'load_class_type_a2l_lazy',
+           'load_records_lazy', 'load_a2l_lazy', 'load_a2l_eager']
 
 # %% ../nbs/01.a2l.ipynb 5
 import ijson
 import json
 import inspect
-from typing import Optional
+from typing import Optional, Union
 from functools import cached_property, cache
 import re
 from enum import Enum
@@ -154,8 +154,6 @@ def get_argparser()->argparse.ArgumentParser:
 	"""
 	import re
 
-
-
 	parser = argparse.ArgumentParser(
         "Get the A2L file path and the desired configuration for CCP/XCP.",
     )
@@ -186,6 +184,8 @@ def get_argparser()->argparse.ArgumentParser:
 		type=list_of_strings,
 		default=r"TQD_trqTrqSetNormal_MAP_v, " 
 				r"VBU_L045A_CWP_05_09T_AImode_CM_single, " 
+				r"Lookup2D_FLOAT32_IEEE, " 
+				r"Lookup2D_X_FLOAT32_IEEE, " 
 				r"TQD_vVehSpd, "
 				r"TQD_vSgndSpd_MAP_y, "
 				r"TQD_pctAccPedPosFlt, "
@@ -211,6 +211,8 @@ args = parser.parse_args(
 		"-l",
 		r"TQD_trqTrqSetNormal_MAP_v, " 
 				r"VBU_L045A_CWP_05_09T_AImode_CM_single, " 
+				r"Lookup2D_FLOAT32_IEEE, " 
+				r"Lookup2D_X_FLOAT32_IEEE, " 
 				r"TQD_vVehSpd, "
 				r"TQD_vSgndSpd_MAP_y, "
 				r"TQD_pctAccPedPosFlt, "
@@ -269,15 +271,35 @@ class Record:
 		return f'<{self.__class__.__name__}: {self.Name!r}>'
 
 	@staticmethod
-	def fetch(key: str)->Record:
-		return Record.record_registry[key]
+	def fetch(key: str) -> Union[Record, str]:
+		try:
+			rec = Record.record_registry[key]
+		except KeyError:
+			rec = key
+
+		return rec 
 	
 	@classmethod
-	def load_types(cls, path: Path, jnode_path: Optional[JsonNodePath]=JsonNodePath('/PROJECT/MODULE[]'))->None:
+	def load_types(cls, path: Path, jnode_path: Optional[JsonNodePath] = JsonNodePath('/PROJECT/MODULE[]')) -> None:
+		"""
+		Load types for the Record class.
+
+		Args:
+			path (Path): The path to the file.
+			jnode_path (Optional[JsonNodePath], optional): The JSON node path. Defaults to JsonNodePath('/PROJECT/MODULE[]').
+		"""
 		cls.__RecordCats = load_class_type_a2l_lazy(path, jnode_path)
 
 	@classmethod
-	def load_records(cls, path: Path, keys: list[str], jnode_path: Optional[JsonNodePath]=JsonNodePath('/PROJECT/MODULE[]'))->None:
+	def load_records(cls, path: Path, keys: list[str], jnode_path: Optional[JsonNodePath] = JsonNodePath('/PROJECT/MODULE[]')) -> None:
+		"""
+		Load records for the Record class.
+
+		Args:
+			path (Path): The path to the file.
+			keys (list[str]): The list of keys.
+			jnode_path (Optional[JsonNodePath], optional): The JSON node path. Defaults to JsonNodePath('/PROJECT/MODULE[]').
+		"""
 		cls.load_types(path, jnode_path)
 		cls.record_registry = load_records_lazy(path, keys, jnode_path)
 
@@ -304,18 +326,29 @@ class Calibration(Record):
 			return super().__repr__() 
 
 	@cached_property
-	def data_type(self):
+	def data_conversion(self):
 		try:
 			key = self.__dict__['Conversion']['Value']  # define the key for the axis for future fetch
 		except KeyError:
 			raise KeyError(f'The key "Conversion" is not found in the calibration description or '
 						f'the key "Value" is not found in the "Conversion" dict.')
 		cat = 'COMPU_METHOD'
-		key = f"{super().record_registry[cat]}.{key}"  # define the key for the axis for future fetch
+		key = f"{super().subclass_registry[cat]}.{key}"  # define the key for the axis for future fetch
 		return self.__class__.fetch(key)
 
 	@cached_property
-	def Address(self):
+	def data_type(self):
+		try:
+			key = self.__dict__['Deposit']['Value']  # define the key for the axis for future fetch
+		except KeyError:
+			raise KeyError(f'The key "Deposit" is not found in the calibration description or '
+						f'the key "Value" is not found in the "Deposit" dict.')
+		cat = 'RECORD_LAYOUT'
+		key = f"{super().subclass_registry[cat]}.{key}"  # define the key for the axis for future fetch
+		return self.__class__.fetch(key)
+
+	@cached_property
+	def address(self):
 		return hex(int(self.__dict__['Address']['Value']))[2:]   # transform Ecu address to hex string without '0x'
 
 	@cached_property
@@ -369,7 +402,7 @@ class Calibration(Record):
 				# get the AXIS_PTS object from the registry				
 				cat = 'COMPU_METHOD'
 				key = f"{super().subclass_registry[cat]}.{key}"
-				axis['data_type'] = self.__class__.fetch(key)  # replace value with object
+				axis['data_conversion'] = self.__class__.fetch(key)  # replace value with object
 
 				bunch_register_key = f'{self.__class__.__name__}.{self.Name}.{axis["InputQuantity"]["Value"]}' 
 				bunch = Bunch(bunch_register_key,**axis)
@@ -393,7 +426,7 @@ class Measurement(Record):
 			return super().__repr__() 
 	
 	@cached_property
-	def data_type(self):
+	def data_conversion(self):
 		try:
 			key = self.__dict__['Conversion']['Value']  # define the key for the axis for future fetch
 		except KeyError:
@@ -401,6 +434,17 @@ class Measurement(Record):
 						f'the key "Value" is not found in the "Conversion" dict.')
 		cat = 'COMPU_METHOD'
 		key = f"{super().subclass_registry[cat]}.{key}"
+		return self.__class__.fetch(key)
+
+	@cached_property
+	def data_type(self):
+		try:
+			key = self.__dict__['DataType']['Value']  # define the key for the axis for future fetch
+		except KeyError:
+			raise KeyError(f'The key "Deposit" is not found in the calibration description or '
+						f'the key "Value" is not found in the "Deposit" dict.')
+		cat = 'RECORD_LAYOUT'
+		key = f"{super().subclass_registry[cat]}.{key}"  # define the key for the axis for future fetch
 		return self.__class__.fetch(key)
 
 	@cached_property
@@ -420,7 +464,7 @@ class AxisScale(Record):
 			return super().__repr__() 
 	
 	@cached_property
-	def data_type(self):
+	def data_conversion(self):
 		try:
 			key = self.__dict__['Conversion']['Value']  # define the key for the axis for future fetch
 		except KeyError:
@@ -429,13 +473,24 @@ class AxisScale(Record):
 		cat = 'COMPU_METHOD'
 		key = f"{super().subclass_registry[cat]}.{key}"
 		return self.__class__.fetch(key)
+	
+	@cached_property
+	def data_type(self):
+		try:
+			key = self.__dict__['DepositR']['Value']  # define the key for the axis for future fetch
+		except KeyError:
+			raise KeyError(f'The key "DepositR" is not found in the calibration description or '
+						f'the key "Value" is not found in the "DepositR" dict.')
+		cat = 'RECORD_LAYOUT'
+		key = f"{super().subclass_registry[cat]}.{key}"  # define the key for the axis for future fetch
+		return self.__class__.fetch(key)
 
 	@cached_property
 	def address(self):
 		return hex(int(self.__dict__['Address']['Value']))[2:]   # transform Ecu address to hex string without '0x'
 
 	@cached_property
-	def InputQuantity(self):
+	def input(self):
 		try:
 			key = self.__dict__['InputQuantity']['Value']  # define the key for the axis for future fetch
 		except KeyError:
@@ -446,10 +501,10 @@ class AxisScale(Record):
 		return self.__class__.fetch(key)
 
 # %% ../nbs/01.a2l.ipynb 28
-class DataType(Record):
-	"""Data type object for calibration; a2l section ["PROJECT"]["MODULE"]["COMPU_METHOD"]]""" 
+class DataConversion(Record):
+	"""Data conversion object for calibration; a2l section ["PROJECT"]["MODULE"]["COMPU_METHOD"]]""" 
 	__CAT = 'COMPU_METHOD'
-	Record.subclass_registry[__CAT] = 'DataType'
+	Record.subclass_registry[__CAT] = 'DataConversion'
 
 	def __repr__(self):
 		try:
@@ -457,7 +512,19 @@ class DataType(Record):
 		except AttributeError:
 			return super().__repr__() 
 
-# %% ../nbs/01.a2l.ipynb 30
+# %% ../nbs/01.a2l.ipynb 29
+class DataLayout(Record):
+	"""Data type object for calibration; a2l section ["PROJECT"]["MODULE"]["RECORD_LAYOUT"]""" 
+	__CAT = 'RECORD_LAYOUT'
+	Record.subclass_registry[__CAT] = 'DataLayout'
+
+	def __repr__(self):
+		try:
+			return f'<{self.__class__.__name__}: {self.Name!r}>'
+		except AttributeError:
+			return super().__repr__() 
+
+# %% ../nbs/01.a2l.ipynb 31
 def load_class_type_a2l_lazy(path: Path, jnode_path: Optional[JsonNodePath]=JsonNodePath('/PROJECT/MODULE[]'))->type(Enum):  # return a class type
 	""" Search for the calibration key in the A2L file.
 	Descripttion: Load the A2L file as a dictionary.
@@ -482,7 +549,7 @@ def load_class_type_a2l_lazy(path: Path, jnode_path: Optional[JsonNodePath]=Json
 	RecordTypes = Enum('RecordType', record_type_keys)
 	return RecordTypes
 
-# %% ../nbs/01.a2l.ipynb 32
+# %% ../nbs/01.a2l.ipynb 33
 def load_records_lazy(path: Path, leaves: list[str], jnode_path: Optional[JsonNodePath]=JsonNodePath('/PROJECT/MODULE[]'))->dict[Record]:
 	"""load records from a json file lazily
 
@@ -527,7 +594,7 @@ def load_records_lazy(path: Path, leaves: list[str], jnode_path: Optional[JsonNo
 			
 	return records
 
-# %% ../nbs/01.a2l.ipynb 36
+# %% ../nbs/01.a2l.ipynb 39
 def load_a2l_lazy(path: Path, leaves: list[str])->dict:
 	""" Search for the calibration key in the A2L file.
 	Descripttion: Load the A2L file as a dictionary.
@@ -559,7 +626,7 @@ def load_a2l_lazy(path: Path, leaves: list[str])->dict:
 
 	return records
 
-# %% ../nbs/01.a2l.ipynb 40
+# %% ../nbs/01.a2l.ipynb 43
 def load_a2l_eager(path: Path, jnode_path: JsonNodePath=JsonNodePath('/PROJECT/MODULE[]'))->dict:
 	""" Load the A2L file as a dictionary.
 	Descripttion: Load the A2L file as a dictionary.
