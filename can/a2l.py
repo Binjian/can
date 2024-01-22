@@ -3,7 +3,7 @@
 # %% auto 0
 __all__ = ['parser', 'args', 'list_of_strings', 'JsonNodePathSegment', 'JsonNodePath', 'get_argparser', 'Bunch', 'Record',
            'Calibration', 'Measurement', 'AxisScale', 'DataConversion', 'DataLayout', 'load_class_type_a2l_lazy',
-           'load_records_lazy', 'load_a2l_lazy', 'load_a2l_eager']
+           'load_records_lazy', 'XCPConfig', 'load_a2l_lazy', 'load_a2l_eager']
 
 # %% ../nbs/01.a2l.ipynb 5
 import ijson
@@ -19,6 +19,7 @@ import argparse
 from InquirerPy import inquirer
 from InquirerPy.validator import NumberValidator, EmptyInputValidator, PathValidator
 from InquirerPy.base.control import Choice
+from pydantic import BaseModel, Field, validator
 
 # %% ../nbs/01.a2l.ipynb 6
 def list_of_strings(strings: str)->list[str]:
@@ -275,7 +276,7 @@ class Record:
 		try:
 			rec = Record.record_registry[key]
 		except KeyError:
-			rec = key
+			rec = key.split('.')[-1]
 
 		return rec 
 	
@@ -595,6 +596,14 @@ def load_records_lazy(path: Path, leaves: list[str], jnode_path: Optional[JsonNo
 	return records
 
 # %% ../nbs/01.a2l.ipynb 39
+class XCPConfig(BaseModel):
+	"""XCP configuration for the calibration parameter"""
+	channel: int = Field(default=3, ge=0, description='XCP channel')
+	download_can_id: str = Field(default='630', ge='0', alias='download', description='CAN ID for download')
+	upload_can_id: str = Field(default='631', ge='0', alias='upload', description='CAN ID for upload')
+
+
+# %% ../nbs/01.a2l.ipynb 45
 def load_a2l_lazy(path: Path, leaves: list[str])->dict:
 	""" Search for the calibration key in the A2L file.
 	Descripttion: Load the A2L file as a dictionary.
@@ -626,7 +635,7 @@ def load_a2l_lazy(path: Path, leaves: list[str])->dict:
 
 	return records
 
-# %% ../nbs/01.a2l.ipynb 43
+# %% ../nbs/01.a2l.ipynb 49
 def load_a2l_eager(path: Path, jnode_path: JsonNodePath=JsonNodePath('/PROJECT/MODULE[]'))->dict:
 	""" Load the A2L file as a dictionary.
 	Descripttion: Load the A2L file as a dictionary.
