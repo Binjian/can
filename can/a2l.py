@@ -3,13 +3,14 @@
 # %% auto 0
 __all__ = ['parser', 'args', 'list_of_strings', 'JsonNodePathSegment', 'JsonNodePath', 'get_argparser', 'Bunch', 'Record',
            'Calibration', 'Measurement', 'AxisScale', 'DataConversion', 'DataLayout', 'load_class_type_a2l_lazy',
-           'load_records_lazy', 'XCPConfig', 'load_a2l_lazy', 'load_a2l_eager']
+           'load_records_lazy', 'XCPConfig', 'XCPData', 'XCPCalib', 'Generate_XCPData', 'load_a2l_lazy',
+           'load_a2l_eager']
 
 # %% ../nbs/01.a2l.ipynb 5
 import ijson
 import json
 import inspect
-from typing import Optional, Union
+from typing import Optional, Union, List
 from functools import cached_property, cache
 import re
 from enum import Enum
@@ -19,7 +20,8 @@ import argparse
 from InquirerPy import inquirer
 from InquirerPy.validator import NumberValidator, EmptyInputValidator, PathValidator
 from InquirerPy.base.control import Choice
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, validator, conlist
+from typing_extensions import Annotated
 
 # %% ../nbs/01.a2l.ipynb 6
 def list_of_strings(strings: str)->list[str]:
@@ -95,6 +97,7 @@ class JsonNodePath:
 		Returns:
 			dict: The node specified by the node path.
 		"""
+		self.node_path_str = node_path
 		path_segments = re.split(r'/\s*', node_path)[1:]
 		self.node_path_segments = []
 		for s in path_segments:
@@ -187,6 +190,7 @@ def get_argparser()->argparse.ArgumentParser:
 				r"VBU_L045A_CWP_05_09T_AImode_CM_single, " 
 				r"Lookup2D_FLOAT32_IEEE, " 
 				r"Lookup2D_X_FLOAT32_IEEE, " 
+				r"Scalar_FLOAT32_IEEE, " 
 				r"TQD_vVehSpd, "
 				r"TQD_vSgndSpd_MAP_y, "
 				r"TQD_pctAccPedPosFlt, "
@@ -214,6 +218,7 @@ args = parser.parse_args(
 				r"VBU_L045A_CWP_05_09T_AImode_CM_single, " 
 				r"Lookup2D_FLOAT32_IEEE, " 
 				r"Lookup2D_X_FLOAT32_IEEE, " 
+				r"Scalar_FLOAT32_IEEE, " 
 				r"TQD_vVehSpd, "
 				r"TQD_vSgndSpd_MAP_y, "
 				r"TQD_pctAccPedPosFlt, "
@@ -338,7 +343,7 @@ class Calibration(Record):
 		return self.__class__.fetch(key)
 
 	@cached_property
-	def data_type(self):
+	def record_type(self):
 		try:
 			key = self.__dict__['Deposit']['Value']  # define the key for the axis for future fetch
 		except KeyError:
@@ -346,7 +351,13 @@ class Calibration(Record):
 						f'the key "Value" is not found in the "Deposit" dict.')
 		cat = 'RECORD_LAYOUT'
 		key = f"{super().subclass_registry[cat]}.{key}"  # define the key for the axis for future fetch
-		return self.__class__.fetch(key)
+		rtype = self.__class__.fetch(key)
+		if type(rtype) is str:  # if the key is not found in the registry, then it is a scalar
+			key = 'Scalar_' + rtype  # construct the new key for the scalar as defined in a2l
+			cat = 'RECORD_LAYOUT'
+			rtype = self.__class__.fetch(key)
+		
+		return rtype
 
 	@cached_property
 	def address(self):
@@ -438,7 +449,7 @@ class Measurement(Record):
 		return self.__class__.fetch(key)
 
 	@cached_property
-	def data_type(self):
+	def record_type(self):
 		try:
 			key = self.__dict__['DataType']['Value']  # define the key for the axis for future fetch
 		except KeyError:
@@ -446,7 +457,13 @@ class Measurement(Record):
 						f'the key "Value" is not found in the "Deposit" dict.')
 		cat = 'RECORD_LAYOUT'
 		key = f"{super().subclass_registry[cat]}.{key}"  # define the key for the axis for future fetch
-		return self.__class__.fetch(key)
+		rtype = self.__class__.fetch(key)
+		if type(rtype) is str:  # if the key is not found in the registry, then it is a scalar
+			key = 'Scalar_' + rtype  # construct the new key for the scalar as defined in a2l
+			cat = 'RECORD_LAYOUT'
+			rtype = self.__class__.fetch(key)
+		
+		return rtype
 
 	@cached_property
 	def address(self):
@@ -476,7 +493,7 @@ class AxisScale(Record):
 		return self.__class__.fetch(key)
 	
 	@cached_property
-	def data_type(self):
+	def record_type(self):
 		try:
 			key = self.__dict__['DepositR']['Value']  # define the key for the axis for future fetch
 		except KeyError:
@@ -484,7 +501,13 @@ class AxisScale(Record):
 						f'the key "Value" is not found in the "DepositR" dict.')
 		cat = 'RECORD_LAYOUT'
 		key = f"{super().subclass_registry[cat]}.{key}"  # define the key for the axis for future fetch
-		return self.__class__.fetch(key)
+		rtype = self.__class__.fetch(key)
+		if type(rtype) is str:  # if the key is not found in the registry, then it is a scalar
+			key = 'Scalar_' + rtype  # construct the new key for the scalar as defined in a2l
+			cat = 'RECORD_LAYOUT'
+			rtype = self.__class__.fetch(key)
+		
+		return rtype
 
 	@cached_property
 	def address(self):
@@ -518,12 +541,40 @@ class DataLayout(Record):
 	"""Data type object for calibration; a2l section ["PROJECT"]["MODULE"]["RECORD_LAYOUT"]""" 
 	__CAT = 'RECORD_LAYOUT'
 	Record.subclass_registry[__CAT] = 'DataLayout'
+	# size: int=Field(default=4, description='size of the data in bytes')
 
 	def __repr__(self):
 		try:
 			return f'<{self.__class__.__name__}: {self.Name!r}>'
 		except AttributeError:
 			return super().__repr__() 
+	
+
+	@property
+	def data_type(self):
+		try:
+			dtype = self.__dict__['FNC_VALUES']['DataType']['Value']  # define the key for the axis for future fetch
+		except KeyError:
+			try:
+				dtype = self.__dict__['AXIS_PTS_X']['DataType']['Value']  # define the key for the axis for future fetch
+			except KeyError:
+				raise KeyError(f'The key "DataType" is not found in the RECORD_LAYOUT "FNC_VALUES" or "AXIS_PTS_X" section'
+							f'or the key "Value" is not found in the "DataType" dict.')
+		return dtype
+
+	@cached_property
+	def type_size(self):
+		match(self.data_type):
+			case 'UBYTE' | 'SBYTE' | 'CHAR':
+				return 1
+			case 'UWORD' | 'SWORD':
+				return 2
+			case 'ULONG' | 'SLONG' | 'FLOAT32_IEEE':
+				return 4
+			case 'A_UINT64' | 'A_INT64' | 'FLOAT64_IEEE':
+				return 8
+			case _:
+				raise ValueError(f'Invalid data type {self.data_type}')
 
 # %% ../nbs/01.a2l.ipynb 31
 def load_class_type_a2l_lazy(path: Path, jnode_path: Optional[JsonNodePath]=JsonNodePath('/PROJECT/MODULE[]'))->type(Enum):  # return a class type
@@ -595,15 +646,70 @@ def load_records_lazy(path: Path, leaves: list[str], jnode_path: Optional[JsonNo
 			
 	return records
 
-# %% ../nbs/01.a2l.ipynb 39
+# %% ../nbs/01.a2l.ipynb 43
 class XCPConfig(BaseModel):
 	"""XCP configuration for the calibration parameter"""
-	channel: int = Field(default=3, ge=0, description='XCP channel')
-	download_can_id: str = Field(default='630', ge='0', alias='download', description='CAN ID for download')
-	upload_can_id: str = Field(default='631', ge='0', alias='upload', description='CAN ID for upload')
+	channel: int = Field(default=3, ge=0, le=10000, description='XCP channel')
+	download_can_id: str = Field(default='630', ge='0', alias='download', validate_default=True, description='CAN ID for download')
+	upload_can_id: str = Field(default='631', ge='0', alias='upload', validate_default=True, description='CAN ID for upload')
 
 
 # %% ../nbs/01.a2l.ipynb 45
+class XCPData(BaseModel):
+	"""XCP data for the calibration parameter"""
+	name: str = Field(default='TQD_trqTrqSetNormal_MAP_v', description='XCP calibration name')
+	address: Optional[str] = Field(default='7000aa2a',pattern=r'^[0-9A-Fa-f]{8}$', description='Target Ecu address')
+	dim: conlist(Annotated[int,Field(gt=0,lt=50)],min_length=2,max_length=2)
+	value_type: str = Field(default='FLOAT32_IEEE', description='XCP data type')
+	value_length: int = Field(default=4,multiple_of=2,gt=0,description='XCP data type length in Bytes')
+	value: str = Field(pattern=r'^[0-9A-Fa-f]{0,3000}$',  min_length=1, max_length=3000, description='XCP calbiration data')
+
+# %% ../nbs/01.a2l.ipynb 49
+class XCPCalib(BaseModel):
+	"""XCP calibration parameter"""
+	config: XCPConfig = Field(default_factory=XCPConfig, description='XCP configuration')
+	data: List[XCPData] = Field(default_factory=List[XCPData], description='list of XCP calibration data')
+
+# %% ../nbs/01.a2l.ipynb 50
+def Generate_XCPData(
+		a2l: Path=Path('../res/vbu_sample.json'), 
+		keys: List[str]=['TQD_trqTrqSetNormal_MAP_v',
+					"VBU_L045A_CWP_05_09T_AImode_CM_single",
+					"Lookup2D_FLOAT32_IEEE",
+					"Lookup2D_X_FLOAT32_IEEE, " 
+					"TQD_vVehSpd",
+					"TQD_vSgndSpd_MAP_y",
+					"TQD_pctAccPedPosFlt",
+					"TQD_pctAccPdl_MAP_x"],
+		node_path: str='/PROJECT/MODULE[]',
+		default_xcpdata: str=2856*'0')->XCPCalib:
+	"""Generate XCP calibration parameter from A2L file and calibration parameter name
+
+	Args:
+		a2l (Path): path to the A2L file
+		calib (str): calibration parameter name
+
+	Returns:
+		XCPCalib: XCP calibration parameter
+	"""
+
+	# load calibration parameter from A2L file
+	calibs = load_records_lazy(a2l, keys, JsonNodePath(node_path))
+	idx = 'Calibration.' + keys[0]
+	calib = calibs[idx]
+
+	# create XCP calibration parameter
+	xcp_data = XCPData(name=calib.Name, 
+					address=calib.address, 
+					dim=[calib.axes[0].MaxAxisPoints['Value'],
+						calib.axes[1].MaxAxisPoints['Value']], 
+					value_type=calib.record_type.data_type,
+					value_length=calib.record_type.type_size,
+					value=default_xcpdata)
+
+	return xcp_data
+
+# %% ../nbs/01.a2l.ipynb 57
 def load_a2l_lazy(path: Path, leaves: list[str])->dict:
 	""" Search for the calibration key in the A2L file.
 	Descripttion: Load the A2L file as a dictionary.
@@ -635,7 +741,7 @@ def load_a2l_lazy(path: Path, leaves: list[str])->dict:
 
 	return records
 
-# %% ../nbs/01.a2l.ipynb 49
+# %% ../nbs/01.a2l.ipynb 61
 def load_a2l_eager(path: Path, jnode_path: JsonNodePath=JsonNodePath('/PROJECT/MODULE[]'))->dict:
 	""" Load the A2L file as a dictionary.
 	Descripttion: Load the A2L file as a dictionary.
