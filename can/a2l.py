@@ -24,6 +24,8 @@ from InquirerPy.base.control import Choice
 from pydantic import BaseModel, Field, validator, field_validator, model_validator, conlist, model_serializer, ValidationError
 from pydantic.functional_validators import AfterValidator
 from typing_extensions import Annotated, TypeAliasType
+import numpy as np
+import struct
 
 # %% ../nbs/01.a2l.ipynb 6
 def list_of_strings(strings: str)->list[str]:
@@ -807,7 +809,7 @@ def check_a2l_type(v: str) -> str:
 
 A2LType = Annotated[str, AfterValidator(check_a2l_type)]
 
-# %% ../nbs/01.a2l.ipynb 52
+# %% ../nbs/01.a2l.ipynb 53
 class XCPData(BaseModel):
 	"""XCP data for the calibration parameter"""
 	name: str = Field(default='TQD_trqTrqSetNormal_MAP_v', description='XCP calibration name')
@@ -843,12 +845,31 @@ class XCPData(BaseModel):
 				return 8
 			case _:
 				raise ValueError(f'Invalid data type {self.value_type}')
+			
+	@staticmethod
+	def binary32_to_float(binary32):
+		return struct.unpack('!f',struct.pack('!I', int(binary32, 2)))[0]
+
+	@staticmethod
+	def hex_to_float(h):
+		# return struct.unpack('!f', struct.pack('!I', int(hex, 16)))[0]
+		s = ''.join([h[i:i+2] for i in range(0, len(h), 2)][::-1])
+		return struct.unpack('!f', bytes.fromhex(s))[0]
+
+	@cached_property
+	def value_array_view(self) -> np.ndarray:
+
+		# a = np.array([self.value[i:i+self.type_size*2] for i in range(0, len(self.value), self.type_size*2)])
+		# convert each byte from string to float (reverse the endianess)
+		a = np.array([self.hex_to_float(self.value[i:i+self.type_size*2]) for i in range(0, len(self.value), self.type_size*2)])
+		a = a.reshape(tuple(self.dim))
+		return a
 
 	def __repr__(self) -> str:
 		
 		return pformat(self.__dict__)
 
-# %% ../nbs/01.a2l.ipynb 53
+# %% ../nbs/01.a2l.ipynb 54
 def Get_Init_XCPData(path: Path=Path('../res/init_value_17rows.json'))->List[XCPData]:
 
 	xcp_data = []
@@ -863,7 +884,7 @@ def Get_Init_XCPData(path: Path=Path('../res/init_value_17rows.json'))->List[XCP
 	
 	return xcp_data
 
-# %% ../nbs/01.a2l.ipynb 57
+# %% ../nbs/01.a2l.ipynb 60
 class XCPCalib(BaseModel):
 	"""XCP calibration parameter"""
 	config: XCPConfig = Field(default_factory=XCPConfig, description='XCP configuration')
@@ -876,7 +897,7 @@ class XCPCalib(BaseModel):
 	# 	res.update({'data': data})
 		# return res
 
-# %% ../nbs/01.a2l.ipynb 58
+# %% ../nbs/01.a2l.ipynb 61
 def Get_XCPCalib_From_XCP(path: Path=Path('../res/download.json'))->List[XCPData]:
 
 	with open(path) as f:   
@@ -893,7 +914,7 @@ def Get_XCPCalib_From_XCP(path: Path=Path('../res/download.json'))->List[XCPData
 	
 	return xcp_calib
 
-# %% ../nbs/01.a2l.ipynb 59
+# %% ../nbs/01.a2l.ipynb 62
 def Generate_XCPData(
 		a2l: Path=Path('../res/vbu_sample.json'), 
 		keys: List[str]=['TQD_trqTrqSetNormal_MAP_v',
@@ -932,7 +953,7 @@ def Generate_XCPData(
 
 	return xcp_data
 
-# %% ../nbs/01.a2l.ipynb 70
+# %% ../nbs/01.a2l.ipynb 73
 def load_a2l_lazy(path: Path, leaves: list[str])->dict:
 	""" Search for the calibration key in the A2L file.
 	Descripttion: Load the A2L file as a dictionary.
@@ -964,7 +985,7 @@ def load_a2l_lazy(path: Path, leaves: list[str])->dict:
 
 	return records
 
-# %% ../nbs/01.a2l.ipynb 72
+# %% ../nbs/01.a2l.ipynb 75
 def load_a2l_eager(path: Path, jnode_path: JsonNodePath=JsonNodePath('/PROJECT/MODULE[]'))->dict:
 	""" Load the A2L file as a dictionary.
 	Descripttion: Load the A2L file as a dictionary.
