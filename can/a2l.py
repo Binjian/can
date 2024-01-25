@@ -3,8 +3,8 @@
 # %% auto 0
 __all__ = ['parser', 'args', 'list_of_strings', 'JsonNodePathSegment', 'JsonNodePath', 'get_argparser', 'Bunch', 'Record',
            'Calibration', 'Measurement', 'AxisScale', 'DataConversion', 'DataLayout', 'load_class_type_a2l_lazy',
-           'load_records_lazy', 'XCPConfig', 'XCPData', 'XCPCalib', 'Generate_XCPData', 'load_a2l_lazy',
-           'load_a2l_eager']
+           'load_records_lazy', 'XCPConfig', 'XCPData', 'Get_Init_XCPData', 'XCPCalib', 'Get_XCPCalib_From_XCP',
+           'Generate_XCPData', 'load_a2l_lazy', 'load_a2l_eager']
 
 # %% ../nbs/01.a2l.ipynb 5
 import ijson
@@ -15,12 +15,12 @@ from functools import cached_property, cache
 import re
 from enum import Enum
 from pathlib import Path
-from pprint import pprint
+from pprint import pprint, pformat
 import argparse
 from InquirerPy import inquirer
 from InquirerPy.validator import NumberValidator, EmptyInputValidator, PathValidator
 from InquirerPy.base.control import Choice
-from pydantic import BaseModel, Field, validator, conlist
+from pydantic import BaseModel, Field, validator, conlist, model_serializer
 from typing_extensions import Annotated
 
 # %% ../nbs/01.a2l.ipynb 6
@@ -353,8 +353,7 @@ class Calibration(Record):
 		key = f"{super().subclass_registry[cat]}.{key}"  # define the key for the axis for future fetch
 		rtype = self.__class__.fetch(key)
 		if type(rtype) is str:  # if the key is not found in the registry, then it is a scalar
-			key = 'Scalar_' + rtype  # construct the new key for the scalar as defined in a2l
-			cat = 'RECORD_LAYOUT'
+			key = f"{super().subclass_registry[cat]}.{'Scalar_' + rtype}"  # construct the new key for the scalar as defined in a2l
 			rtype = self.__class__.fetch(key)
 		
 		return rtype
@@ -457,10 +456,10 @@ class Measurement(Record):
 						f'the key "Value" is not found in the "Deposit" dict.')
 		cat = 'RECORD_LAYOUT'
 		key = f"{super().subclass_registry[cat]}.{key}"  # define the key for the axis for future fetch
+		# print(key)
 		rtype = self.__class__.fetch(key)
 		if type(rtype) is str:  # if the key is not found in the registry, then it is a scalar
-			key = 'Scalar_' + rtype  # construct the new key for the scalar as defined in a2l
-			cat = 'RECORD_LAYOUT'
+			key = f"{super().subclass_registry[cat]}.{'Scalar_' + rtype}"  # construct the new key for the scalar as defined in a2l
 			rtype = self.__class__.fetch(key)
 		
 		return rtype
@@ -503,9 +502,12 @@ class AxisScale(Record):
 		key = f"{super().subclass_registry[cat]}.{key}"  # define the key for the axis for future fetch
 		rtype = self.__class__.fetch(key)
 		if type(rtype) is str:  # if the key is not found in the registry, then it is a scalar
-			key = 'Scalar_' + rtype  # construct the new key for the scalar as defined in a2l
-			cat = 'RECORD_LAYOUT'
+			key = f"{super().subclass_registry[cat]}.{'Scalar_' + rtype}"  # construct the new key for the scalar as defined in a2l
 			rtype = self.__class__.fetch(key)
+		# if type(rtype) is str:  # if the key is not found in the registry, then it is a scalar
+		# 	key = 'Scalar_' + rtype  # construct the new key for the scalar as defined in a2l
+		# 	cat = 'RECORD_LAYOUT'
+		# 	rtype = self.__class__.fetch(key)
 		
 		return rtype
 
@@ -571,8 +573,8 @@ class DataLayout(Record):
 				return 2
 			case 'ULONG' | 'SLONG' | 'FLOAT32_IEEE':
 				return 4
-			case 'A_UINT64' | 'A_INT64' | 'FLOAT64_IEEE':
-				return 8
+			# case 'UINT64' | 'INT64' | 'FLOAT64_IEEE':
+			# 	return 8
 			case _:
 				raise ValueError(f'Invalid data type {self.data_type}')
 
@@ -613,22 +615,157 @@ def load_records_lazy(path: Path, leaves: list[str], jnode_path: Optional[JsonNo
 	Returns:
 		dict[str, Record]: dict of Records and its subclasses, indexed by the leaf indices
 	"""
-	records = {}
+	registry = {}
 	Record.load_types(path, jnode_path= jnode_path)  # init subclass_registry in  Record
 	for leaf in leaves:
 		prefix = '' 
+		event = ''
+		map_array_levels = []
+		# Find the record
 		with open(path, "r") as f:
-			parser = ijson.parse(f)
+			parse_events = ijson.parse(f)
 			while True:
-				prefix, event, value = next(parser)
-				if value == leaf and prefix.split('.')[-2] == 'Name':  # find the leaf with the key "Name", is the index of  an a2l record
-					break
+				try:
+					prefix, event, value = next(parse_events)
+					# print(f'prefix: {prefix}, event: {event}, value: {value}')
+					match(event):
+						case 'start_map':
+							map_array_levels.append('m')
+						case 'end_map':
+							m = map_array_levels.pop()
+							assert m == 'm', f'Invalid map level {m}'
+						case 'start_array':
+							map_array_levels.append('a')
+						case 'end_array':
+							a = map_array_levels.pop() 
+							assert a == 'a', f'Invalid array level {a}'
+						case 'map_key':
+							pass
+						case 'string':
+							if value == leaf \
+								and prefix.split('.')[-2] == 'Name' \
+								and ''.join(map_array_levels) == 'mmamamm':
+								# and map_level==4 \
+								# and array_level==1:  # find the leaf with the key "Name", is the index of  an a2l record
+								print(f'prefix: {prefix}, event: {event}, value: {value}, map_array_levels: {"".join(map_array_levels)}')
+								break  # leaf must be located at the 4th level of the map, and 1st level of the array
+						case _:
+							continue
+				except StopIteration as exc:
+					raise ValueError(f'leaf {leaf} not found in {path}') from exc
+
+			# Extract the record, Name shoulb be gone as the first key
+			# prefix = ".".join(prefix.split('.')[:-2])  # remove the last two segments "Name" and "Value", return to the root of  the item
+			# map_array_levels.pop()  # remove the last level "m", return to the rest of record
+			
+			prefix, event, value = next(parse_events)  # get the end map event
+			current_prefix = ".".join(prefix.split('.')[:-1])  # remove the last segment "Value", return to the root of  the item
+			if event != 'end_map':
+				raise ValueError(f'Invalid event {event} after the leaf {leaf} is found!')
 			else:
-				raise ValueError(f'leaf {leaf} not found in {path}')
-			prefix = ".".join(prefix.split('.')[:-2])  # remove the last two segments "Name" and "Value", return to the root of  the item
-			objects =  ijson.kvitems(parser, prefix)
-			rec  = {k:v for k,v in objects}
-			rec['Name'] = leaf   # add the calibration key as name back to the record
+				m = map_array_levels.pop()  # remove the last level "m", return to the rest of record
+				assert m == 'm', f'Invalid map level {m}'
+				peer_level = "".join(map_array_levels)
+				ending_level = "".join(map_array_levels)[:-1]
+			
+			# Init the record and the captured
+			record = {}
+			record['Name'] = leaf   # add the calibration key as name back to the record
+			name = leaf  # init name for the record is the current map key where the leaf is found
+			last_event = event
+			n = None  # current node
+			while True:
+				try:
+					prefix, event, value = next(parse_events)
+					record_path = prefix.replace(current_prefix, "").split('.')
+					record_path.pop(0)
+					# if record_path[0] == '':  # remove the first empty string
+					# record_path.pop(0)
+					print(f'prefix: {record_path}, event: {event}, value: {value}')
+					match(event):
+						case 'start_map':  # open up a new map on the current nested level
+							map_array_levels.append('m')
+							# start nested map
+							if last_event == 'map_key':  # if last event is map_key, then the current node is a map
+								assert record_path[-1]==name, f'Invalid record path {record_path} for {value}!'  # confirm map key is the last part of the prefixeee
+								n.update({name:{}})  # add the nested map
+								n = n[name]  # get down the nested map 
+							elif last_event == 'start_array':  # if last event is array, then the current node is an array
+								assert record_path[-1]=='item', f'Invalid record path {record_path} for {value}!'  # confirm map key is the last part of the prefixeee
+								n.append({})  # append another map to the array
+								n = n[-1]  # move to the newly created last item  in the  nested array
+							elif last_event == 'end_map':  # if last event is array, then the current node is an array
+								assert record_path[-1]=='item', f'Invalid record path {record_path} for {value}!'  # confirm map key is the last part of the prefixeee
+								# have to update n, because the last event is not map_key, where n is updated
+								n = record
+								for k in record_path[:-1]:
+									if k != 'item':
+										n = n[k]
+									else:  # k == 'item', array  											assert len(d)>0, f'Invalid array {d}'
+										assert len(n)>0, f'Invalid array {n}'
+										n = n[-1]  # get the last item, when generating, fill the items in order
+								n.append({})  # append another map to the array
+								n = n[-1]  # move to the newly created last item  in the  nested array
+							else:
+								raise ValueError(f'{event} should not follow {last_event}!')
+						case 'end_map':
+							m = map_array_levels.pop()
+							assert m == 'm', f'Invalid map level {m}'
+							# if last_event == 'start_map':  #  empty map, no value
+							# 	# last_value[name]={}
+							# 	pass
+							name = ''  # reset map key
+
+							if "".join(map_array_levels)==ending_level:  # 'mmama':
+								break
+							# elif ".".join(map_array_levels)==peer_level:
+							# 	record.update(captured)  # absorb the captured into the record
+							# 	captured = None  # reset the captured
+							# else:  # deeper than peer level
+							# 	captured = record
+
+						case 'start_array':
+							map_array_levels.append('a')
+							assert last_event == 'map_key', f'{event} should not follow {last_event}!'  # confirm you have the key
+							assert record_path[-1]==name, f'Invalid record path {record_path} for {value}! Data corrupted!'  # confirm map key is the last part of the prefixeee
+							assert n[name]=='', f'Invalid init map {n[name]}!'  # confirm map key is the last part of the prefixeee 
+							n.update({name:[]})  # update default nested dict to default nested array
+							n = n[name]  # get down the nested array
+						case 'end_array':
+							a = map_array_levels.pop() 
+							assert a == 'a', f'Invalid array level {a}'
+							name = ''
+
+							if ".".join(map_array_levels)==ending_level: # if we want to extract an array, then we need to go to the peer level 
+								break
+						case 'map_key':
+							name = value 
+							n = record
+							for k in record_path:
+								if k != 'item':
+									n = n[k]
+								else:  # k == 'item', array  											assert len(d)>0, f'Invalid array {d}'
+									assert len(n)>0, f'Invalid array {n}'
+									n = n[-1]  # get the last item, when generating, fill the items in order
+							n.update({name:''})  # add the key to the map
+
+						case 'null' |'boolean' | 'integer' | 'double' | 'number' | 'string':
+							assert name!='', f'map key not available!'
+							if map_array_levels[-1]=='m':   # last_event=''start_map' is volatile!
+								n[name]=value  # single key-value pair in the same map 
+							else:  # map_array_levels[-1] == 'a':
+								n[name].append(value)
+						case _:
+							raise ValueError(f'{event} should not occur! Data corrupted!')
+						
+					last_event = event
+				except StopIteration as exc:
+					raise ValueError(f'{leaf} data corrupted!') from exc
+			# for k,v in ijson.kvitems(parse_events, prefix):
+			# 	if k == 'Name': 
+			# 		if v['Value'] == leaf:
+			# 			break
+			# rec = {k:v for k,v in ijson.kvitems(parse_events, prefix)}
 			
 			record_type = set(re.split(r'\.', prefix)).intersection(set(RecordTypes.__members__.keys()))
 			assert len(record_type)==1, f'Invalid record type/s {record_type}'
@@ -642,11 +779,11 @@ def load_records_lazy(path: Path, leaves: list[str], jnode_path: Optional[JsonNo
 				factory = Record
 			
 			key = f'{cls_name}.{leaf}'
-			records[key] = factory(**rec)  # create the record object and add it to the record registry
+			registry[key] = factory(**record)  # create the record object and add it to the record registry
 			
-	return records
+	return registry
 
-# %% ../nbs/01.a2l.ipynb 43
+# %% ../nbs/01.a2l.ipynb 47
 class XCPConfig(BaseModel):
 	"""XCP configuration for the calibration parameter"""
 	channel: int = Field(default=3, ge=0, le=10000, description='XCP channel')
@@ -654,7 +791,7 @@ class XCPConfig(BaseModel):
 	upload_can_id: str = Field(default='631', ge='0', alias='upload', validate_default=True, description='CAN ID for upload')
 
 
-# %% ../nbs/01.a2l.ipynb 45
+# %% ../nbs/01.a2l.ipynb 50
 class XCPData(BaseModel):
 	"""XCP data for the calibration parameter"""
 	name: str = Field(default='TQD_trqTrqSetNormal_MAP_v', description='XCP calibration name')
@@ -664,13 +801,52 @@ class XCPData(BaseModel):
 	value_length: int = Field(default=4,multiple_of=2,gt=0,description='XCP data type length in Bytes')
 	value: str = Field(pattern=r'^[0-9A-Fa-f]{0,3000}$',  min_length=1, max_length=3000, description='XCP calbiration data')
 
-# %% ../nbs/01.a2l.ipynb 49
+	def __repr__(self) -> str:
+		return pformat(self.__dict__)
+
+# %% ../nbs/01.a2l.ipynb 51
+def Get_Init_XCPData(path: Path=Path('../res/init_value_17rows.json'))->List[XCPData]:
+
+	xcp_data = []
+	with open(path) as f:   
+		init_values = json.load(f)
+		data = init_values['data']
+		for v in data:
+			xcp_data.append(XCPData(**v))
+	
+	return xcp_data
+
+# %% ../nbs/01.a2l.ipynb 53
 class XCPCalib(BaseModel):
 	"""XCP calibration parameter"""
 	config: XCPConfig = Field(default_factory=XCPConfig, description='XCP configuration')
 	data: List[XCPData] = Field(default_factory=List[XCPData], description='list of XCP calibration data')
 
-# %% ../nbs/01.a2l.ipynb 50
+	# @model_serializer
+	# def ser_model(self):
+	# 	data = [d.model_dump() for d in self.data]
+	# 	res = self.config.model_dump(), 
+	# 	res.update({'data': data})
+		# return res
+
+# %% ../nbs/01.a2l.ipynb 54
+def Get_XCPCalib_From_XCP(path: Path=Path('../res/download.json'))->List[XCPData]:
+
+	with open(path) as f:   
+		d = json.load(f)
+		data = d['data']
+		xcp_data = []
+		for v in data:
+			xcp_data.append(XCPData(**v))
+
+		config =d['config']
+		xcp_config = XCPConfig(config=config)
+	
+	xcp_calib = XCPCalib(config=xcp_config, data=xcp_data)
+	
+	return xcp_calib
+
+# %% ../nbs/01.a2l.ipynb 55
 def Generate_XCPData(
 		a2l: Path=Path('../res/vbu_sample.json'), 
 		keys: List[str]=['TQD_trqTrqSetNormal_MAP_v',
@@ -709,7 +885,7 @@ def Generate_XCPData(
 
 	return xcp_data
 
-# %% ../nbs/01.a2l.ipynb 57
+# %% ../nbs/01.a2l.ipynb 64
 def load_a2l_lazy(path: Path, leaves: list[str])->dict:
 	""" Search for the calibration key in the A2L file.
 	Descripttion: Load the A2L file as a dictionary.
@@ -741,7 +917,7 @@ def load_a2l_lazy(path: Path, leaves: list[str])->dict:
 
 	return records
 
-# %% ../nbs/01.a2l.ipynb 61
+# %% ../nbs/01.a2l.ipynb 68
 def load_a2l_eager(path: Path, jnode_path: JsonNodePath=JsonNodePath('/PROJECT/MODULE[]'))->dict:
 	""" Load the A2L file as a dictionary.
 	Descripttion: Load the A2L file as a dictionary.
