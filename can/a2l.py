@@ -4,7 +4,7 @@
 __all__ = ['pp', 'parser', 'args', 'type_collection', 'A2LType', 'list_of_strings', 'JsonNodePathSegment', 'JsonNodePath',
            'get_argparser', 'Bunch', 'Record', 'Calibration', 'Measurement', 'AxisScale', 'DataConversion',
            'DataLayout', 'load_class_type_a2l_lazy', 'load_records_lazy', 'XCPConfig', 'check_a2l_type', 'XCPData',
-           'Get_Init_XCPData', 'XCPCalib', 'Get_XCPCalib_From_XCP', 'Generate_XCPData', 'load_a2l_lazy',
+           'Get_Init_XCPData', 'XCPCalib', 'Get_XCPCalib_From_XCP', 'Generate_Init_XCPData', 'load_a2l_lazy',
            'load_a2l_eager']
 
 # %% ../nbs/01.a2l.ipynb 5
@@ -21,7 +21,7 @@ import argparse
 from InquirerPy import inquirer
 from InquirerPy.validator import NumberValidator, EmptyInputValidator, PathValidator
 from InquirerPy.base.control import Choice
-from pydantic import BaseModel, Field, validator, field_validator, model_validator, conlist, model_serializer, ValidationError
+from pydantic import BaseModel, Field, ConfigDict, validator, field_validator, model_validator, conlist, model_serializer, ValidationError
 from pydantic.functional_validators import AfterValidator
 from typing_extensions import Annotated, TypeAliasType
 import numpy as np
@@ -581,7 +581,7 @@ class DataLayout(Record):
 			case 'ULONG' | 'SLONG' | 'FLOAT32_IEEE':
 				return 4
 			case 'UINT64' | 'INT64' | 'FLOAT64_IEEE':
-			 	return 8
+				return 8
 			case _:
 				raise ValueError(f'Invalid data type {self.data_type}')
 
@@ -812,15 +812,19 @@ def check_a2l_type(v: str) -> str:
 
 A2LType = Annotated[str, AfterValidator(check_a2l_type)]
 
-# %% ../nbs/01.a2l.ipynb 54
+# %% ../nbs/01.a2l.ipynb 53
 class XCPData(BaseModel):
 	"""XCP data for the calibration parameter"""
-	name: str = Field(default='TQD_trqTrqSetNormal_MAP_v', description='XCP calibration name')
-	address: Optional[str] = Field(default='7000aa2a',pattern=r'^[0-9A-Fa-f]{8}$', description='Target Ecu address')
-	dim: conlist(Annotated[int,Field(gt=0,lt=50)],min_length=2,max_length=2)
-	value_type: A2LType = Field(default='FLOAT32_IEEE', description='Customized XCP data type')
-	value_length: int = Field(default=4,multiple_of=2,gt=0,description='XCP data type length in Bytes')
+	name: str = Field(frozen=True,default='TQD_trqTrqSetNormal_MAP_v', description='XCP calibration name')
+	address: Optional[str] = Field(frozen=True,default='7000aa2a',pattern=r'^[0-9A-Fa-f]{8}$', description='Target Ecu address')
+	dim: conlist(Annotated[int,Field(frozen=True,gt=0,lt=50)],min_length=2,max_length=2)
+	value_type: A2LType = Field(frozen=True,default='FLOAT32_IEEE', description='Customized XCP data type')
+	value_length: int = Field(frozen=True,default=4,multiple_of=2,gt=0,description='XCP data type length in Bytes')
 	value: str = Field(pattern=r'^[0-9A-Fa-f]{0,3000}$', min_length=1, max_length=3000, description='XCP calbiration data')
+
+	# model_config = ConfigDict(revalidate_instances='always')
+	class Config:
+		revalidate_instances = True
 
 	@model_validator(mode="after")
 	def check_map_dimension(self) -> 'XCPData':
@@ -852,6 +856,7 @@ class XCPData(BaseModel):
 	@staticmethod
 	def binary32_to_float(binary32):
 		return struct.unpack('!f',struct.pack('!I', int(binary32, 2)))[0]
+	
 
 	@staticmethod
 	def hex_to_float(h:str)->list[float]:
@@ -868,9 +873,10 @@ class XCPData(BaseModel):
 		np.set_printoptions(threshold=2, precision=3)
 		d = self.__dict__.copy()
 		d['value'] = f"{self.value:.10s}...{self.value[-3:]}"
+		d['value_array_view'] = self.value_array_view
 		return pformat(d, indent=4, width=80, compact=True)
 
-# %% ../nbs/01.a2l.ipynb 55
+# %% ../nbs/01.a2l.ipynb 54
 def Get_Init_XCPData(path: Path=Path('../res/init_value_17rows.json'))->List[XCPData]:
 
 	xcp_data = []
@@ -885,7 +891,7 @@ def Get_Init_XCPData(path: Path=Path('../res/init_value_17rows.json'))->List[XCP
 	
 	return xcp_data
 
-# %% ../nbs/01.a2l.ipynb 62
+# %% ../nbs/01.a2l.ipynb 61
 class XCPCalib(BaseModel):
 	"""XCP calibration parameter"""
 	config: XCPConfig = Field(default_factory=XCPConfig, description='XCP configuration')
@@ -898,7 +904,7 @@ class XCPCalib(BaseModel):
 	# 	res.update({'data': data})
 		# return res
 
-# %% ../nbs/01.a2l.ipynb 63
+# %% ../nbs/01.a2l.ipynb 62
 def Get_XCPCalib_From_XCP(path: Path=Path('../res/download.json'))->List[XCPData]:
 
 	with open(path) as f:   
@@ -915,8 +921,8 @@ def Get_XCPCalib_From_XCP(path: Path=Path('../res/download.json'))->List[XCPData
 	
 	return xcp_calib
 
-# %% ../nbs/01.a2l.ipynb 64
-def Generate_XCPData(
+# %% ../nbs/01.a2l.ipynb 63
+def Generate_Init_XCPData(
 		a2l: Path=Path('../res/vbu_sample.json'), 
 		keys: List[str]=['TQD_trqTrqSetNormal_MAP_v',
 					"VBU_L045A_CWP_05_09T_AImode_CM_single",
@@ -926,13 +932,13 @@ def Generate_XCPData(
 					"TQD_vSgndSpd_MAP_y",
 					"TQD_pctAccPedPosFlt",
 					"TQD_pctAccPdl_MAP_x"],
-		node_path: str='/PROJECT/MODULE[]',
-		default_xcpdata: str=2856*'0')->XCPCalib:
-	"""Generate XCP calibration parameter from A2L file and calibration parameter name
+		node_path: str='/PROJECT/MODULE[]')->XCPCalib:
+	"""Generate XCP calibration header from A2L file and calibration parameter name
 
 	Args:
 		a2l (Path): path to the A2L file
-		calib (str): calibration parameter name
+		keys (List[str]): calibration parameter name
+		node_path (str): path to the calibration parameter in the A2L json file
 
 	Returns:
 		XCPCalib: XCP calibration parameter
@@ -944,17 +950,18 @@ def Generate_XCPData(
 	calib = calibs[idx]
 
 	# create XCP calibration parameter
+	dim = [int(calib.axes[0].MaxAxisPoints['Value']), int(calib.axes[1].MaxAxisPoints['Value'])]
+	init_xcp_data=dim[0]*dim[1]*calib.record_type.type_size*2*'0'  # byte_size*2 for hex string length
 	xcp_data = XCPData(name=calib.Name, 
 					address=calib.address, 
-					dim=[calib.axes[0].MaxAxisPoints['Value'],
-						calib.axes[1].MaxAxisPoints['Value']], 
+					dim=dim, 
 					value_type=calib.record_type.data_type,
 					value_length=calib.record_type.type_size,
-					value=default_xcpdata)
+					value=init_xcp_data)
 
 	return xcp_data
 
-# %% ../nbs/01.a2l.ipynb 75
+# %% ../nbs/01.a2l.ipynb 76
 def load_a2l_lazy(path: Path, leaves: list[str])->dict:
 	""" Search for the calibration key in the A2L file.
 	Descripttion: Load the A2L file as a dictionary.
@@ -986,7 +993,7 @@ def load_a2l_lazy(path: Path, leaves: list[str])->dict:
 
 	return records
 
-# %% ../nbs/01.a2l.ipynb 77
+# %% ../nbs/01.a2l.ipynb 78
 def load_a2l_eager(path: Path, jnode_path: JsonNodePath=JsonNodePath('/PROJECT/MODULE[]'))->dict:
 	""" Load the A2L file as a dictionary.
 	Descripttion: Load the A2L file as a dictionary.
