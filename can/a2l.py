@@ -822,9 +822,9 @@ class XCPData(BaseModel):
 	value_length: int = Field(frozen=True,default=4,multiple_of=2,gt=0,description='XCP data type length in Bytes')
 	value: str = Field(pattern=r'^[0-9A-Fa-f]{0,3000}$', min_length=1, max_length=3000, description='XCP calbiration data')
 
-	# model_config = ConfigDict(revalidate_instances='always')
-	class Config:
-		revalidate_instances = True
+	model_config = ConfigDict(revalidate_instances='always')
+	# class Config:
+	# 	revalidate_instances = True
 
 	@model_validator(mode="after")
 	def check_map_dimension(self) -> 'XCPData':
