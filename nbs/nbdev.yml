@@ -2,8 +2,8 @@ project:
   output-dir: _docs
 
 website:
-  title: "can"
-  site-url: "https://Binjian.github.io/can"
+  title: "candycan"
+  site-url: "https://Binjian.github.io/candycan"
   description: "can interface to tspace"
   repo-branch: main
-  repo-url: "https://github.com/Binjian/can"
+  repo-url: "https://github.com/Binjian/candycan"
