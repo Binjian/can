@@ -4,3 +4,10 @@ website:
       - index.ipynb
       - 00.core.ipynb
       - 01.a2l.ipynb
+      - 02.xcp.ipynb
+      - 03.dbc.ipynb
+      - section: vcantest
+        contents:
+          - vcantest/receive_messasge.ipynb
+          - vcantest/send_message.ipynb
+          - vcantest/send_receive_message_mp.ipynb

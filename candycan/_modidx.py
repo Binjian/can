@@ -85,4 +85,4 @@ d = { 'settings': { 'branch': 'main',
                                                                            'candycan/send_message.py'),
                                        'candycan.send_message.signal_usr1': ( 'vcantest/send_message.html#signal_usr1',
                                                                               'candycan/send_message.py')},
-            'candycan.xcp': {'candycan.xcp.foo': ('02.xcp.html#foo', 'candycan/xcp.py')}}}
+            'candycan.xcp': {'candycan.xcp.get_argparser': ('02.xcp.html#get_argparser', 'candycan/xcp.py')}}}
