@@ -908,7 +908,7 @@ def Get_Init_XCPData(path: Path=Path('../res/init_value_17rows.json'))->List[XCP
 	
 	return xcp_data
 
-# %% ../nbs/01.a2l.ipynb 67
+# %% ../nbs/01.a2l.ipynb 68
 class XCPCalib(BaseModel):
 	"""XCP calibration parameter"""
 	config: XCPConfig = Field(default_factory=XCPConfig, description='XCP configuration')
@@ -921,7 +921,7 @@ class XCPCalib(BaseModel):
 	# 	res.update({'data': data})
 		# return res
 
-# %% ../nbs/01.a2l.ipynb 68
+# %% ../nbs/01.a2l.ipynb 69
 def Get_XCPCalib_From_XCPJSon(path: Path=Path('../res/download.json'))->List[XCPData]:
 
 	with open(path) as f:   
@@ -938,7 +938,7 @@ def Get_XCPCalib_From_XCPJSon(path: Path=Path('../res/download.json'))->List[XCP
 	
 	return xcp_calib
 
-# %% ../nbs/01.a2l.ipynb 69
+# %% ../nbs/01.a2l.ipynb 70
 def Generate_Init_XCPData_From_A2L(
 		a2l: Path=Path('../res/vbu_sample.json'), 
 		keys: List[str]=['TQD_trqTrqSetNormal_MAP_v',
@@ -981,7 +981,7 @@ def Generate_Init_XCPData_From_A2L(
 
 	return xcp_data
 
-# %% ../nbs/01.a2l.ipynb 82
+# %% ../nbs/01.a2l.ipynb 83
 def load_a2l_lazy(path: Path, leaves: list[str])->dict:
 	""" Search for the calibration key in the A2L file.
 	Descripttion: Load the A2L file as a dictionary.
@@ -1013,7 +1013,7 @@ def load_a2l_lazy(path: Path, leaves: list[str])->dict:
 
 	return records
 
-# %% ../nbs/01.a2l.ipynb 84
+# %% ../nbs/01.a2l.ipynb 85
 def load_a2l_eager(path: Path, jnode_path: JsonNodePath=JsonNodePath('/PROJECT/MODULE[]'))->dict:
 	""" Load the A2L file as a dictionary.
 	Descripttion: Load the A2L file as a dictionary.
@@ -1041,7 +1041,7 @@ def load_a2l_eager(path: Path, jnode_path: JsonNodePath=JsonNodePath('/PROJECT/M
 			# a2l = json.load(f)
 	return n
 
-# %% ../nbs/01.a2l.ipynb 90
+# %% ../nbs/01.a2l.ipynb 91
 if __name__ == "__main__" and "__file__" in globals():
     
     # parser = get_argparser()
