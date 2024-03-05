@@ -15,7 +15,7 @@ import os
 import sys
 import signal
 import time
-from multiprocessing import synchronize, Manager
+from multiprocessing import Manager
 from multiprocessing.managers import DictProxy
 
 # %% ../nbs/vcantest/send_message.ipynb 5

@@ -3,16 +3,8 @@
 # %% auto 0
 __all__ = []
 
-# %% ../nbs/03.dbc.ipynb 3
-from datetime import datetime
-from typing import Optional
-
 # %% ../nbs/03.dbc.ipynb 4
-import can
 import cantools
 from cantools.database import Message as MessageTpl
 # from can.interface import Bus
 # from can import Message 
-from multiprocessing import Process, Event
-from multiprocessing import synchronize, Manager
-from multiprocessing.managers import DictProxy

@@ -5,14 +5,9 @@ __all__ = ['get_argparser', 'receive_msg', 'receive_message']
 
 # %% ../nbs/vcantest/receive_messasge.ipynb 4
 import os
-import signal
-import time
-import sys
 import io
-from multiprocessing import Event
-from multiprocessing import synchronize, Manager
+from multiprocessing import Manager
 from multiprocessing.managers import DictProxy
-from typing import Optional
 from datetime import datetime
 import json
 import argparse
