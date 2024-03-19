@@ -17,7 +17,6 @@ from pprint import pprint, PrettyPrinter
 import subprocess
 from multiprocessing import Manager
 from multiprocessing.managers import DictProxy
-import can
 import cantools
 from cantools.database import Message as MessagerTpl
 from cantools.database.can.database import Database
@@ -27,7 +26,7 @@ import pandas as pd
 import numpy as np
 import struct
 
-# %% ../nbs/02.xcp.ipynb 6
+# %% ../nbs/02.xcp.ipynb 7
 from candycan.a2l import (
     list_of_strings,
     XCPCalib,
@@ -38,16 +37,16 @@ from candycan.a2l import (
 )
 
 
-# %% ../nbs/02.xcp.ipynb 7
+# %% ../nbs/02.xcp.ipynb 8
 pp = PrettyPrinter(indent=4, width=80, compact=True)
 
-# %% ../nbs/02.xcp.ipynb 8
+# %% ../nbs/02.xcp.ipynb 9
 repo = git.Repo("./", search_parent_directories=True)  # get the Repo object of tspace
 if os.path.basename(repo.working_dir) != "candycan":  # I'm in the parent repo!
     repo = repo.submodule("candycan").module()
 pprint(repo.working_dir)
 
-# %% ../nbs/02.xcp.ipynb 9
+# %% ../nbs/02.xcp.ipynb 10
 def get_argparser() -> argparse.ArgumentParser:
 	"""Summary
 	Get argument parser for command line arguments
@@ -138,7 +137,7 @@ def get_argparser() -> argparse.ArgumentParser:
 		help='Output file path')
 	return parser
 
-# %% ../nbs/02.xcp.ipynb 19
+# %% ../nbs/02.xcp.ipynb 21
 def npa_to_packed_buffer(a: np.ndarray) -> str:
     """ convert a numpy array to a packed string buffer for flashing
     TODO: implementation as numpy ufunc
@@ -152,7 +151,7 @@ def npa_to_packed_buffer(a: np.ndarray) -> str:
     b = [struct.pack("<f", x).hex() for x in np.nditer(a)]
     return ''.join(b)
 
-# %% ../nbs/02.xcp.ipynb 22
+# %% ../nbs/02.xcp.ipynb 24
 def flash_xcp(xcp_calib: XCPCalib, data: pd.DataFrame, diff_flashing: bool=False, download: bool=True):
     """Summary
     Flash XCP data to target
@@ -165,6 +164,7 @@ def flash_xcp(xcp_calib: XCPCalib, data: pd.DataFrame, diff_flashing: bool=False
     
     """
     
+    # convert dataframe to a hex string to be flashed and assigned to XCPCalib field data
     xcp_calib.data = data.astype(np.float32).tobytes().hex()
 
     if download:
@@ -172,12 +172,14 @@ def flash_xcp(xcp_calib: XCPCalib, data: pd.DataFrame, diff_flashing: bool=False
             raise NotImplementedError("Differential flashing not implemented yet")
         else:
             pass
-             
         
 
     
 
-# %% ../nbs/02.xcp.ipynb 23
+# %% ../nbs/02.xcp.ipynb 25
+from scapy.all import *
+
+# %% ../nbs/02.xcp.ipynb 46
 if __name__ == "__main__" and "__file__" in globals():  # only run if this file is called directly
 
     protocol = inquirer.select(
