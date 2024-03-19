@@ -6,6 +6,8 @@ website:
       - 01.a2l.ipynb
       - 02.xcp.ipynb
       - 03.dbc.ipynb
+      - 04.data_link_socketcan.ipynb
+      - 05.data_link_scapy.ipynb
       - section: vcantest
         contents:
           - vcantest/receive_messasge.ipynb
