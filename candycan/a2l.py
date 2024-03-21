@@ -50,7 +50,7 @@ def list_of_strings(strings: str)->list[str]:
 	return re.split(r',\s*|;\s*|\s+', strings)	
 
 
-# %% ../nbs/01.a2l.ipynb 10
+# %% ../nbs/01.a2l.ipynb 11
 class JsonNodePathSegment:
 	"""result of parsing json node path segment
 	
@@ -91,7 +91,7 @@ class JsonNodePathSegment:
 	def is_dict(self):
 		return self.indices is None and self.index_range is None
 
-# %% ../nbs/01.a2l.ipynb 11
+# %% ../nbs/01.a2l.ipynb 12
 class JsonNodePath:
 	"""result of parsing json node path
 	
@@ -161,7 +161,7 @@ class JsonNodePath:
 		"""return the lazy path of the node path"""
 		return '.'.join([f'{s.name}' if s.is_dict else f'{s.name}.item' for s in self.node_path_segments])
 
-# %% ../nbs/01.a2l.ipynb 13
+# %% ../nbs/01.a2l.ipynb 14
 def get_argparser()->argparse.ArgumentParser:
 	""" Get the argument parser for the command line interface.
 	Descripttion: Get the argument parser for the command line interface.
@@ -213,7 +213,7 @@ def get_argparser()->argparse.ArgumentParser:
 
 	return parser
 
-# %% ../nbs/01.a2l.ipynb 14
+# %% ../nbs/01.a2l.ipynb 15
 parser = get_argparser()
 args = parser.parse_args(
 	[
@@ -240,7 +240,7 @@ args = parser.parse_args(
 )
 args.__dict__
 
-# %% ../nbs/01.a2l.ipynb 25
+# %% ../nbs/01.a2l.ipynb 26
 class Bunch(object):
 	"""collector of a bunch of named stuff into one object; a generic record/struct type, indexed by keys"""
 	bunch_registry = {} 
@@ -275,7 +275,7 @@ class Bunch(object):
 	# 	cls.bunch_registry.update({key: value})
 	
 
-# %% ../nbs/01.a2l.ipynb 26
+# %% ../nbs/01.a2l.ipynb 27
 class Record:
 	"""object with dynamic attributes"""
 	record_registry = None
@@ -322,7 +322,7 @@ class Record:
 		cls.load_types(path, jnode_path)
 		cls.record_registry = load_records_lazy(path, keys, jnode_path)
 
-# %% ../nbs/01.a2l.ipynb 27
+# %% ../nbs/01.a2l.ipynb 28
 class Calibration(Record):
 	"""Target calibration object for torque map; a2l section ["PROJECT"]["MODULE"]["CHARACTERISTIC"]
 	
@@ -437,7 +437,7 @@ class Calibration(Record):
 		except KeyError:
 			raise KeyError('The key "AXIS_DESCR" is not found in the calibration object.')
 
-# %% ../nbs/01.a2l.ipynb 28
+# %% ../nbs/01.a2l.ipynb 29
 class Measurement(Record):
 	"""Measurement object like speed,  acc pedal position, etc; a2l section ["PROJECT"]["MODULE"]["MEAUREMENT"]]""" 
 	__CAT = 'MEASUREMENT'
@@ -481,7 +481,7 @@ class Measurement(Record):
 	def address(self):
 		return hex(int(self.__dict__['ECU_ADDRESS']['Address']['Value']))[2:]   # transform Ecu address to hex string without '0x'
 
-# %% ../nbs/01.a2l.ipynb 29
+# %% ../nbs/01.a2l.ipynb 30
 class AxisScale(Record):
 	"""Target calibration object for torque map; a2l section ["PROJECT"]["MODULE"]["AXIS_PTS"]""" 
 	__CAT = 'AXIS_PTS'
@@ -539,7 +539,7 @@ class AxisScale(Record):
 		key = f"{super().subclass_registry[cat]}.{key}"
 		return self.__class__.fetch(key)
 
-# %% ../nbs/01.a2l.ipynb 30
+# %% ../nbs/01.a2l.ipynb 31
 class DataConversion(Record):
 	"""Data conversion object for calibration; a2l section ["PROJECT"]["MODULE"]["COMPU_METHOD"]]""" 
 	__CAT = 'COMPU_METHOD'
@@ -551,7 +551,7 @@ class DataConversion(Record):
 		except AttributeError:
 			return super().__repr__() 
 
-# %% ../nbs/01.a2l.ipynb 31
+# %% ../nbs/01.a2l.ipynb 32
 class DataLayout(Record):
 	"""Data type object for calibration; a2l section ["PROJECT"]["MODULE"]["RECORD_LAYOUT"]""" 
 	__CAT = 'RECORD_LAYOUT'
@@ -591,7 +591,7 @@ class DataLayout(Record):
 			case _:
 				raise ValueError(f'Invalid data type {self.data_type}')
 
-# %% ../nbs/01.a2l.ipynb 33
+# %% ../nbs/01.a2l.ipynb 34
 def load_class_type_a2l_lazy(path: Path, jnode_path: Optional[JsonNodePath]=JsonNodePath('/PROJECT/MODULE[]'))->type(Enum):  # return a class type
 	""" Search for the calibration key in the A2L file.
 	Descripttion: Load the A2L file as a dictionary.
@@ -616,10 +616,10 @@ def load_class_type_a2l_lazy(path: Path, jnode_path: Optional[JsonNodePath]=Json
 	RecordTypes = Enum('RecordType', record_type_keys)
 	return RecordTypes
 
-# %% ../nbs/01.a2l.ipynb 34
+# %% ../nbs/01.a2l.ipynb 35
 RecordTypes = load_class_type_a2l_lazy(args.path)
 
-# %% ../nbs/01.a2l.ipynb 37
+# %% ../nbs/01.a2l.ipynb 38
 def load_records_lazy(path: Path, leaves: list[str], jnode_path: Optional[JsonNodePath]=JsonNodePath('/PROJECT/MODULE[]'))->dict[Record]:
 	"""load records from a json file lazily
 
@@ -804,16 +804,16 @@ def load_records_lazy(path: Path, leaves: list[str], jnode_path: Optional[JsonNo
 			
 	return registry
 
-# %% ../nbs/01.a2l.ipynb 50
+# %% ../nbs/01.a2l.ipynb 51
 class XCPConfig(BaseModel):
 	"""XCP configuration for the calibration parameter"""
 	channel: int = Field(default=3, ge=0, le=10000, description='XCP channel')
-	download_can_id: str = Field(default='630', ge='0', alias='download', validate_default=True, description='CAN ID for download')
-	upload_can_id: str = Field(default='631', ge='0', alias='upload', validate_default=True, description='CAN ID for upload')
+	download_can_id: int = Field(default=630, ge=0, lt=10000, alias='download', validate_default=True, description='CAN ID for downloading')
+	upload_can_id: int = Field(default=631, ge=0, lt=10000, alias='upload', validate_default=True, description='CAN ID for uploading')
 
 
-# %% ../nbs/01.a2l.ipynb 52
-type_collection =  set(['UBYTE', 'SBYTE', 'CHAR', 'UWORD', 'SWORD', 'ULONG', 'SLONG', 'FLOAT32_IEEE', 'UINT64', 'INT64', 'FLOAT64_IEEE'])
+# %% ../nbs/01.a2l.ipynb 53
+type_collection =  set(['UBYTE', 'SBYTE', 'CHAR', 'UCHAR', 'UWORD', 'SWORD', 'ULONG', 'SLONG', 'FLOAT32_IEEE', 'UINT64', 'INT64', 'FLOAT64_IEEE'])
 
 def check_a2l_type(v: str) -> str:
 	assert v in type_collection, f'Invalid data type {v}'
@@ -821,14 +821,14 @@ def check_a2l_type(v: str) -> str:
 
 A2LType = Annotated[str, AfterValidator(check_a2l_type)]
 
-# %% ../nbs/01.a2l.ipynb 56
+# %% ../nbs/01.a2l.ipynb 57
 class XCPData(BaseModel):
 	"""XCP data for the calibration parameter"""
 	name: str = Field(frozen=True,default='TQD_trqTrqSetNormal_MAP_v', description='XCP calibration name')
 	address: Optional[str] = Field(frozen=True,default='7000aa2a',pattern=r'^[0-9A-Fa-f]{8}$', description='Target Ecu address')
 	dim: conlist(Annotated[int,Field(frozen=True,gt=0,lt=50)],min_length=2,max_length=2)
 	value_type: A2LType = Field(frozen=True,default='FLOAT32_IEEE', description='Customized XCP data type')
-	value_length: int = Field(frozen=True,default=4,multiple_of=2,gt=0,description='XCP data type length in Bytes')
+	value_length: int = Field(frozen=True,default=4,multiple_of=2,gt=0,description='XCP data type length in Bytes, redundant to value type')
 	value: str = Field(pattern=r'^[0-9A-Fa-f]{0,3000}$', min_length=1, max_length=3000, description='XCP calbiration data')
 
 	model_config = ConfigDict(revalidate_instances='always')
@@ -851,7 +851,7 @@ class XCPData(BaseModel):
 	@cached_property
 	def type_size(self):
 		match(self.value_type):
-			case 'UBYTE' | 'SBYTE' | 'CHAR':
+			case 'UBYTE' | 'SBYTE' | 'CHAR' | 'UCHAR':
 				return 1
 			case 'UWORD' | 'SWORD':
 				return 2
@@ -884,7 +884,37 @@ class XCPData(BaseModel):
 
 	@cached_property
 	def value_array_view(self) -> np.ndarray:
-		return np.array(self.hex_to_float(self.value)).reshape(tuple(self.dim))
+		match self.value_type:
+			case 'UBYTE':  # 1 byte
+				return np.array([int(self.value[i:i+2], 16) for i in range(0, len(self.value), 2)]).reshape(tuple(self.dim)).astype(np.uint8)
+			case 'SBYTE':  # 1 byte
+				return np.array([int(self.value[i:i+2], 16) for i in range(0, len(self.value), 2)]).reshape(tuple(self.dim)).astype(np.int8)
+			case 'CHAR':   # 1 byte
+				return np.array([int(self.value[i:i+2], 16) for i in range(0, len(self.value), 2)]).reshape(tuple(self.dim)).astype(np.byte)
+			case 'UCHAR':  # 1 byte
+				return np.array([int(self.value[i:i+2], 16) for i in range(0, len(self.value), 2)]).reshape(tuple(self.dim)).astype(np.ubyte)
+			case 'SWORD':  # 2 bytes
+				return np.array([int(self.value[i:i+4], 16) for i in range(0, len(self.value), 4)]).reshape(tuple(self.dim)).astype(np.short)
+			case 'UWORD':  # 2 bytes
+				return np.array([int(self.value[i:i+4], 16) for i in range(0, len(self.value), 4)]).reshape(tuple(self.dim)).astype(np.ushort)
+			case 'SLONG':  # 4 bytes
+				return np.array(self.hex_to_float(self.value)).reshape(tuple(self.dim)).astype(np.int_)
+			case 'ULONG':  # 4 bytes
+				return np.array(self.hex_to_float(self.value)).reshape(tuple(self.dim)).astype(np.uint)
+			case 'FLOAT32_IEEE':  # 4 bytes
+				return np.array(self.hex_to_float(self.value)).reshape(tuple(self.dim)).astype(np.float32)
+			case 'UINT64':  # 8 bytes
+				return np.array(self.hex_to_float(self.value)).reshape(tuple(self.dim)).astype(np.ulonglong)
+			case 'INT64':  # 8 bytes
+				return np.array(self.hex_to_float(self.value)).reshape(tuple(self.dim)).astype(np.longlong)
+			case 'FLOAT64_IEEE':  # 8 bytes
+				return np.array(self.hex_to_float(self.value)).reshape(tuple(self.dim)).astype(np.float64)
+			case _:
+				raise ValueError(f'Invalid data type {self.value_type}')
+
+	@cached_property
+	def value_bytes(self) -> bytes:
+		return bytes.fromhex(self.value)
 
 	def __repr__(self) -> str:
 		np.set_printoptions(threshold=2, precision=3)
@@ -893,7 +923,7 @@ class XCPData(BaseModel):
 		d['value_array_view'] = self.value_array_view
 		return pformat(d, indent=4, width=80, compact=True)
 
-# %% ../nbs/01.a2l.ipynb 57
+# %% ../nbs/01.a2l.ipynb 58
 def Get_Init_XCPData(path: Path=Path('../res/init_value_17rows.json'))->List[XCPData]:
 
 	xcp_data = []
@@ -908,7 +938,7 @@ def Get_Init_XCPData(path: Path=Path('../res/init_value_17rows.json'))->List[XCP
 	
 	return xcp_data
 
-# %% ../nbs/01.a2l.ipynb 68
+# %% ../nbs/01.a2l.ipynb 71
 class XCPCalib(BaseModel):
 	"""XCP calibration parameter"""
 	config: XCPConfig = Field(default_factory=XCPConfig, description='XCP configuration')
@@ -921,8 +951,8 @@ class XCPCalib(BaseModel):
 	# 	res.update({'data': data})
 		# return res
 
-# %% ../nbs/01.a2l.ipynb 69
-def Get_XCPCalib_From_XCPJSon(path: Path=Path('../res/download.json'))->List[XCPData]:
+# %% ../nbs/01.a2l.ipynb 72
+def Get_XCPCalib_From_XCPJSon(path: Path=Path('../res/download.json'))->XCPCalib:
 
 	with open(path) as f:   
 		d = json.load(f)
@@ -938,7 +968,7 @@ def Get_XCPCalib_From_XCPJSon(path: Path=Path('../res/download.json'))->List[XCP
 	
 	return xcp_calib
 
-# %% ../nbs/01.a2l.ipynb 70
+# %% ../nbs/01.a2l.ipynb 73
 def Generate_Init_XCPData_From_A2L(
 		a2l: Path=Path('../res/vbu_sample.json'), 
 		keys: List[str]=['TQD_trqTrqSetNormal_MAP_v',
@@ -981,7 +1011,7 @@ def Generate_Init_XCPData_From_A2L(
 
 	return xcp_data
 
-# %% ../nbs/01.a2l.ipynb 83
+# %% ../nbs/01.a2l.ipynb 86
 def load_a2l_lazy(path: Path, leaves: list[str])->dict:
 	""" Search for the calibration key in the A2L file.
 	Descripttion: Load the A2L file as a dictionary.
@@ -1013,7 +1043,7 @@ def load_a2l_lazy(path: Path, leaves: list[str])->dict:
 
 	return records
 
-# %% ../nbs/01.a2l.ipynb 85
+# %% ../nbs/01.a2l.ipynb 88
 def load_a2l_eager(path: Path, jnode_path: JsonNodePath=JsonNodePath('/PROJECT/MODULE[]'))->dict:
 	""" Load the A2L file as a dictionary.
 	Descripttion: Load the A2L file as a dictionary.
@@ -1041,7 +1071,7 @@ def load_a2l_eager(path: Path, jnode_path: JsonNodePath=JsonNodePath('/PROJECT/M
 			# a2l = json.load(f)
 	return n
 
-# %% ../nbs/01.a2l.ipynb 91
+# %% ../nbs/01.a2l.ipynb 94
 if __name__ == "__main__" and "__file__" in globals():
     
     # parser = get_argparser()

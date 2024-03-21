@@ -4,10 +4,11 @@ website:
       - index.ipynb
       - 00.core.ipynb
       - 01.a2l.ipynb
-      - 02.xcp.ipynb
-      - 03.dbc.ipynb
+      - 02.ccp.ipynb
+      - 03.xcp.ipynb
       - 04.data_link_socketcan.ipynb
       - 05.data_link_scapy.ipynb
+      - 06.dbc.ipynb
       - section: vcantest
         contents:
           - vcantest/receive_messasge.ipynb
