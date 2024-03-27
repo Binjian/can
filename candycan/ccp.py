@@ -3,11 +3,11 @@
 # %% auto 0
 __all__ = ['pp', 'repo', 'CAN_TYPES', 'CANType', 'BUS_TYPES', 'BusType', 'get_argparser', 'npa_to_packed_buffer', 'flash_xcp',
            'check_can_type', 'check_bus_type', 'CANFilter', 'ScapyCANSpecs', 'downlod_calib_data', 'upload_calib_data',
-           'scapy_can_context', 'scapy_SET_MTA_context', 'scapy_load_context', 'downlod_calib_data2',
-           'upload_calib_data2']
+           'can_context', 'SET_MTA_context', 'XLOAD_context', 'downlod_calib_data2', 'upload_calib_data2']
 
 # %% ../nbs/02.ccp.ipynb 3
 import os
+import sys
 import git
 import argparse
 from InquirerPy import inquirer
@@ -159,7 +159,7 @@ def get_argparser() -> argparse.ArgumentParser:
 		help='Output file path')
 	return parser
 
-# %% ../nbs/02.ccp.ipynb 27
+# %% ../nbs/02.ccp.ipynb 29
 def npa_to_packed_buffer(a: np.ndarray) -> str:
     """ convert a numpy array to a packed string buffer for flashing
     TODO: implementation as numpy ufunc
@@ -173,7 +173,7 @@ def npa_to_packed_buffer(a: np.ndarray) -> str:
     b = [struct.pack("<f", x).hex() for x in np.nditer(a)]
     return ''.join(b)
 
-# %% ../nbs/02.ccp.ipynb 30
+# %% ../nbs/02.ccp.ipynb 32
 def flash_xcp(xcp_calib: XCPCalib, data: pd.DataFrame, diff_flashing: bool=False, download: bool=True):
     """Summary
     Flash XCP data to target
@@ -198,14 +198,14 @@ def flash_xcp(xcp_calib: XCPCalib, data: pd.DataFrame, diff_flashing: bool=False
 
     
 
-# %% ../nbs/02.ccp.ipynb 70
+# %% ../nbs/02.ccp.ipynb 71
 CAN_TYPES = set(['NATIVE','PYTHON'])  # Navtive: Native CAN: PYTHON: Python CAN
 # class CanType(StrEnum):
 #     NATIVE = "NATIVE"
 #     PYTHON = "PYTHON"
 CAN_TYPES
 
-# %% ../nbs/02.ccp.ipynb 71
+# %% ../nbs/02.ccp.ipynb 72
 def check_can_type(c: str) -> str:
     """Summary
     Check if the CAN type is valid
@@ -225,7 +225,7 @@ def check_can_type(c: str) -> str:
 
 CANType = Annotated[str, AfterValidator(check_can_type)]
 
-# %% ../nbs/02.ccp.ipynb 73
+# %% ../nbs/02.ccp.ipynb 74
 BUS_TYPES = set(['SOCKET', 'VIRTUAL', 'KVASER', 'PCANUSB', 'IXXAT', 'VECTOR', 'SERIAL', 'NEOVI'])
 # class BusType(StrEnum):
 #     SOCKET = "SOCKET"
@@ -238,7 +238,7 @@ BUS_TYPES = set(['SOCKET', 'VIRTUAL', 'KVASER', 'PCANUSB', 'IXXAT', 'VECTOR', 'S
 #     NEOVI = "NEOVI"
 
 
-# %% ../nbs/02.ccp.ipynb 74
+# %% ../nbs/02.ccp.ipynb 75
 def check_bus_type(b: str) -> str:
     """Summary
     Check if the CAN bus type is valid
@@ -258,7 +258,7 @@ def check_bus_type(b: str) -> str:
 
 BusType = Annotated[str, AfterValidator(check_bus_type)]
 
-# %% ../nbs/02.ccp.ipynb 75
+# %% ../nbs/02.ccp.ipynb 76
 class CANFilter(BaseModel):
     """Summary
     CAN filter for Python CAN bus
@@ -270,7 +270,7 @@ class CANFilter(BaseModel):
     can_id: int = Field(default=630,gt=0,title="CAN message ID",description="CAN message ID")
     can_mask: int = Field(default=0x7ff,gt=0,title="CAN message mask",description="CAN message mask")
 
-# %% ../nbs/02.ccp.ipynb 76
+# %% ../nbs/02.ccp.ipynb 77
 class ScapyCANSpecs(BaseModel):
     can_type: CANType = Field(frozen=True, default='NATIVE', description='CAN type: NATIVE/PYTHON')
     bus_type: BusType = Field(frozen=True, default='VIRTUAL', description='Python CAN bus type')
@@ -307,7 +307,7 @@ class ScapyCANSpecs(BaseModel):
                 
 
 
-# %% ../nbs/02.ccp.ipynb 80
+# %% ../nbs/02.ccp.ipynb 81
 def downlod_calib_data(xcp_calib: XCPCalib, 
                         can_type: CANType, 
                         channel: int,
@@ -392,7 +392,7 @@ def downlod_calib_data(xcp_calib: XCPCalib,
     dto = sock.sr1(cro,timeout=timeout)
     assert dto.return_code == 0x00
 
-# %% ../nbs/02.ccp.ipynb 82
+# %% ../nbs/02.ccp.ipynb 83
 def upload_calib_data(xcp_calib: XCPCalib, 
                         can_type: CANType, 
                         channel: int,
@@ -487,9 +487,9 @@ def upload_calib_data(xcp_calib: XCPCalib,
     dto = sock.sr1(cro,timeout=timeout)
     assert dto.return_code == 0x00
 
-# %% ../nbs/02.ccp.ipynb 83
+# %% ../nbs/02.ccp.ipynb 84
 @contextlib.contextmanager
-def scapy_can_context(can_specs: ScapyCANSpecs):
+def can_context(can_specs: ScapyCANSpecs):
     """Summary
     Context manager for scapy CAN socket
 
@@ -554,9 +554,9 @@ def scapy_can_context(can_specs: ScapyCANSpecs):
         dto = sock.sr1(cro, timeout=can_specs.time_out)
         assert dto.return_code == 0x00
 
-# %% ../nbs/02.ccp.ipynb 84
+# %% ../nbs/02.ccp.ipynb 85
 @contextlib.contextmanager
-def scapy_SET_MTA_context(can_specs: ScapyCANSpecs, sock: CANSocket, data: XCPData) -> CAN:
+def SET_MTA_context(can_specs: ScapyCANSpecs, sock: CANSocket, data: XCPData) -> CAN:
     """Summary
     Context manager for scapy set_mta 
 
@@ -583,9 +583,9 @@ def scapy_SET_MTA_context(can_specs: ScapyCANSpecs, sock: CANSocket, data: XCPDa
     
 
 
-# %% ../nbs/02.ccp.ipynb 85
+# %% ../nbs/02.ccp.ipynb 86
 @contextlib.contextmanager
-def scapy_load_context(can_specs: ScapyCANSpecs, sock: CANSocket, data: XCPData, start_index: int, tile_size: int):
+def XLOAD_context(can_specs: ScapyCANSpecs, sock: CANSocket, data: XCPData, start_index: int, tile_size: int):
     """Summary
     Context manager for scapy load (download or upload)
 
@@ -619,13 +619,13 @@ def scapy_load_context(can_specs: ScapyCANSpecs, sock: CANSocket, data: XCPData,
     try: 
         yield dto
     except TimeoutError:
-        raise TimeoutError(f"CAN socket timeout: {timeout} seconds")
+        raise TimeoutError(f"CAN socket timeout: {can_specs.time_out} seconds")
     except Exception as e:
         raise e
     finally:
         pass  # do nothing, just pray it'll be OK. Crapy CCP!
 
-# %% ../nbs/02.ccp.ipynb 87
+# %% ../nbs/02.ccp.ipynb 88
 def downlod_calib_data2(xcp_calib: XCPCalib, 
                         can_type: str='NATIVE', 
                         bus_type: str='VIRTUAL', 
@@ -657,30 +657,30 @@ def downlod_calib_data2(xcp_calib: XCPCalib,
                             receive_own_messages=True
                             )
     try:
-        with scapy_can_context(can_specs=can_specs) as sock:
+        with can_context(can_specs=can_specs) as sock:
             for d in xcp_calib.data:
                 # SET_MTA
-                with scapy_SET_MTA_context(can_specs=can_specs, sock=sock, data=d) as dto:
+                with SET_MTA_context(can_specs=can_specs, sock=sock, data=d) as dto:
                     assert dto.return_code==0x00, f"SET_MTA failed for {d.name} at {d.address}"
                     # Determine message tiling
                     len_in_bytes = d.type_size * d.dim[0] * d.dim[1]
                     assert len_in_bytes == len(d.value_bytes)
                     tile_size = 6  # 6 bytes per tile as defined in CCP for DNLOAD_6
-                    tiles = len_in_bytes // tile_size 
+                    tiles = len_in_bytes //tile_size 
                     last_tile = len_in_bytes % tile_size
                     # Download full size tiles with DNLOAD_6
                     for i in range(tiles):
                         start_index = i*tile_size
-                        with scapy_load_context(can_specs=can_specs, sock=sock, data=d, start_index=start_index, tile_size=tile_size) as dto:
+                        with XLOAD_context(can_specs=can_specs, sock=sock, data=d, start_index=start_index, tile_size=tile_size) as dto:
                             assert dto.return_code == 0x00, f"DNLOAD_6 failed at tile: {i}"
 
                     start_index = tiles * tile_size
-                    with scapy_load_context(can_specs=can_specs, sock=sock, data=d, start_index=start_index, tile_size=last_tile) as dto:
+                    with XLOAD_context(can_specs=can_specs, sock=sock, data=d, start_index=start_index, tile_size=last_tile) as dto:
                         assert dto.return_code == 0x00, f"DNLOAD failed at last tile: {i} of size {last_tile}"
     except Exception as e:
         print(e)
 
-# %% ../nbs/02.ccp.ipynb 90
+# %% ../nbs/02.ccp.ipynb 91
 def upload_calib_data2(xcp_calib: XCPCalib, 
                         can_type: str='NATIVE', 
                         bus_type: str='VIRTUAL', 
@@ -713,36 +713,39 @@ def upload_calib_data2(xcp_calib: XCPCalib,
                             receive_own_messages=True,
                             download_upload=False  # CCP Upload mode
                             )
-    with scapy_can_context(can_specs=can_specs) as sock:
-        for d in xcp_calib.data:
-            # SET_MTA
-            with scapy_SET_MTA_context(can_specs=can_specs, sock=sock, data=d) as dto:
-                assert dto.return_code==0x00, f"SET_MTA failed for {d.name} at {d.address}"
+    try:
+        with can_context(can_specs=can_specs) as sock:
+            for d in xcp_calib.data:
+                # SET_MTA
+                with SET_MTA_context(can_specs=can_specs, sock=sock, data=d) as dto:
+                    assert dto.return_code==0x00, f"SET_MTA failed for {d.name} at {d.address}"
 
-                # Determine message tiling
-                len_in_bytes = d.type_size * d.dim[0] * d.dim[1]
-                # assert len_in_bytes == len(d.value_bytes)
-                tile_size = 5
-                tiles = len_in_bytes // tile_size 
-                last_tile = len_in_bytes % tile_size
+                    # Determine message tiling
+                    len_in_bytes = d.type_size * d.dim[0] * d.dim[1]
+                    # assert len_in_bytes == len(d.value_bytes)
+                    tile_size = 5
+                    tiles = len_in_bytes // tile_size 
+                    last_tile = len_in_bytes % tile_size
 
-                # Upload tiles with tile_size (maximal 5 as defined by CCP） bytes with UPLOAD
-                ba_uploaded = bytearray()
-                for i in range(tiles):
-                    with scapy_load_context(can_specs=can_specs, sock=sock, data=d, start_index=i*tile_size, tile_size=tile_size) as upload_dto:
+                    # Upload tiles with tile_size (maximal 5 as defined by CCP） bytes with UPLOAD
+                    ba_uploaded = bytearray()
+                    for i in range(tiles):
+                        with XLOAD_context(can_specs=can_specs, sock=sock, data=d, start_index=i*tile_size, tile_size=tile_size) as upload_dto:
+                            assert upload_dto.return_code == 0x00, f"UPLOAD failed at tile: {i}"
+                            ba_uploaded += upload_dto.data
+
+
+                    with XLOAD_context(can_specs=can_specs, sock=sock, data=d, start_index=i*tile_size, tile_size=last_tile) as upload_dto:
                         assert upload_dto.return_code == 0x00, f"UPLOAD failed at tile: {i}"
                         ba_uploaded += upload_dto.data
+                        ba_uploaded += upload_dto.data
+
+                    d.value = ba_uploaded.hex()
+    except Exception as e:
+       print(e)
 
 
-                with scapy_load_context(can_specs=can_specs, sock=sock, data=d, start_index=i*tile_size, tile_size=last_tile) as upload_dto:
-                    assert upload_dto.return_code == 0x00, f"UPLOAD failed at tile: {i}"
-                    ba_uploaded += upload_dto.data
-                    ba_uploaded += upload_dto.data
-
-                d.value = ba_uploaded.hex()
-
-
-# %% ../nbs/02.ccp.ipynb 95
+# %% ../nbs/02.ccp.ipynb 96
 if __name__ == "__main__" and "__file__" in globals():  # only run if this file is called directly
 
     protocol = inquirer.select(
