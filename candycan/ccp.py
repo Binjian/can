@@ -198,14 +198,14 @@ def flash_xcp(xcp_calib: XCPCalib, data: pd.DataFrame, diff_flashing: bool=False
 
     
 
-# %% ../nbs/02.ccp.ipynb 71
+# %% ../nbs/02.ccp.ipynb 73
 CAN_TYPES = set(['NATIVE','PYTHON'])  # Navtive: Native CAN: PYTHON: Python CAN
 # class CanType(StrEnum):
 #     NATIVE = "NATIVE"
 #     PYTHON = "PYTHON"
 CAN_TYPES
 
-# %% ../nbs/02.ccp.ipynb 72
+# %% ../nbs/02.ccp.ipynb 74
 def check_can_type(c: str) -> str:
     """Summary
     Check if the CAN type is valid
@@ -225,7 +225,7 @@ def check_can_type(c: str) -> str:
 
 CANType = Annotated[str, AfterValidator(check_can_type)]
 
-# %% ../nbs/02.ccp.ipynb 74
+# %% ../nbs/02.ccp.ipynb 76
 BUS_TYPES = set(['SOCKET', 'VIRTUAL', 'KVASER', 'PCANUSB', 'IXXAT', 'VECTOR', 'SERIAL', 'NEOVI'])
 # class BusType(StrEnum):
 #     SOCKET = "SOCKET"
@@ -238,7 +238,7 @@ BUS_TYPES = set(['SOCKET', 'VIRTUAL', 'KVASER', 'PCANUSB', 'IXXAT', 'VECTOR', 'S
 #     NEOVI = "NEOVI"
 
 
-# %% ../nbs/02.ccp.ipynb 75
+# %% ../nbs/02.ccp.ipynb 77
 def check_bus_type(b: str) -> str:
     """Summary
     Check if the CAN bus type is valid
@@ -258,7 +258,7 @@ def check_bus_type(b: str) -> str:
 
 BusType = Annotated[str, AfterValidator(check_bus_type)]
 
-# %% ../nbs/02.ccp.ipynb 76
+# %% ../nbs/02.ccp.ipynb 78
 class CANFilter(BaseModel):
     """Summary
     CAN filter for Python CAN bus
@@ -270,7 +270,7 @@ class CANFilter(BaseModel):
     can_id: int = Field(default=630,gt=0,title="CAN message ID",description="CAN message ID")
     can_mask: int = Field(default=0x7ff,gt=0,title="CAN message mask",description="CAN message mask")
 
-# %% ../nbs/02.ccp.ipynb 77
+# %% ../nbs/02.ccp.ipynb 79
 class ScapyCANSpecs(BaseModel):
     can_type: CANType = Field(frozen=True, default='NATIVE', description='CAN type: NATIVE/PYTHON')
     bus_type: BusType = Field(frozen=True, default='VIRTUAL', description='Python CAN bus type')
@@ -307,7 +307,7 @@ class ScapyCANSpecs(BaseModel):
                 
 
 
-# %% ../nbs/02.ccp.ipynb 81
+# %% ../nbs/02.ccp.ipynb 83
 def downlod_calib_data(xcp_calib: XCPCalib, 
                         can_type: CANType, 
                         channel: int,
@@ -392,7 +392,7 @@ def downlod_calib_data(xcp_calib: XCPCalib,
     dto = sock.sr1(cro,timeout=timeout)
     assert dto.return_code == 0x00
 
-# %% ../nbs/02.ccp.ipynb 83
+# %% ../nbs/02.ccp.ipynb 85
 def upload_calib_data(xcp_calib: XCPCalib, 
                         can_type: CANType, 
                         channel: int,
@@ -487,7 +487,7 @@ def upload_calib_data(xcp_calib: XCPCalib,
     dto = sock.sr1(cro,timeout=timeout)
     assert dto.return_code == 0x00
 
-# %% ../nbs/02.ccp.ipynb 84
+# %% ../nbs/02.ccp.ipynb 87
 @contextlib.contextmanager
 def can_context(can_specs: ScapyCANSpecs):
     """Summary
@@ -554,7 +554,7 @@ def can_context(can_specs: ScapyCANSpecs):
         dto = sock.sr1(cro, timeout=can_specs.time_out)
         assert dto.return_code == 0x00
 
-# %% ../nbs/02.ccp.ipynb 85
+# %% ../nbs/02.ccp.ipynb 88
 @contextlib.contextmanager
 def SET_MTA_context(can_specs: ScapyCANSpecs, sock: CANSocket, data: XCPData) -> CAN:
     """Summary
@@ -583,7 +583,7 @@ def SET_MTA_context(can_specs: ScapyCANSpecs, sock: CANSocket, data: XCPData) ->
     
 
 
-# %% ../nbs/02.ccp.ipynb 86
+# %% ../nbs/02.ccp.ipynb 89
 @contextlib.contextmanager
 def XLOAD_context(can_specs: ScapyCANSpecs, sock: CANSocket, data: XCPData, start_index: int, tile_size: int):
     """Summary
@@ -625,7 +625,7 @@ def XLOAD_context(can_specs: ScapyCANSpecs, sock: CANSocket, data: XCPData, star
     finally:
         pass  # do nothing, just pray it'll be OK. Crapy CCP!
 
-# %% ../nbs/02.ccp.ipynb 88
+# %% ../nbs/02.ccp.ipynb 92
 def downlod_calib_data2(xcp_calib: XCPCalib, 
                         can_type: str='NATIVE', 
                         bus_type: str='VIRTUAL', 
@@ -680,7 +680,7 @@ def downlod_calib_data2(xcp_calib: XCPCalib,
     except Exception as e:
         print(e)
 
-# %% ../nbs/02.ccp.ipynb 91
+# %% ../nbs/02.ccp.ipynb 95
 def upload_calib_data2(xcp_calib: XCPCalib, 
                         can_type: str='NATIVE', 
                         bus_type: str='VIRTUAL', 
@@ -745,7 +745,7 @@ def upload_calib_data2(xcp_calib: XCPCalib,
        print(e)
 
 
-# %% ../nbs/02.ccp.ipynb 96
+# %% ../nbs/02.ccp.ipynb 100
 if __name__ == "__main__" and "__file__" in globals():  # only run if this file is called directly
 
     protocol = inquirer.select(
