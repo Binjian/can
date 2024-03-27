@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "candycan"
+version = "0.1.0"
+description = "can wrapper for application level"
+authors = ["binjian xin <binjian.xin@newrizon.com>"]
+license = "GPL 3.0"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
