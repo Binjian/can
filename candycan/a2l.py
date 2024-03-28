@@ -821,7 +821,7 @@ def check_a2l_type(v: str) -> str:
 
 A2LDataType = Annotated[str, AfterValidator(check_a2l_type)]
 
-# %% ../nbs/01.a2l.ipynb 57
+# %% ../nbs/01.a2l.ipynb 59
 class XCPData(BaseModel):
 	"""XCP data for the calibration parameter"""
 	name: str = Field(frozen=True,default='TQD_trqTrqSetNormal_MAP_v', description='XCP calibration name')
@@ -916,6 +916,16 @@ class XCPData(BaseModel):
 	def value_bytes(self) -> bytes:
 		return bytes.fromhex(self.value)
 
+	@cached_property
+	def address_int(self) -> int:
+		return int(self.address, 16)
+
+	def is_compatible(self, other: 'XCPData') -> bool:  # Forward referencing is default for Python3.7+
+		return self.value_type == other.value_type \
+			and self.dim == other.dim \
+			and self.address == other.address \
+			and self.name == other.name
+
 	def __repr__(self) -> str:
 		np.set_printoptions(threshold=2, precision=3)
 		d = self.__dict__.copy()
@@ -924,7 +934,7 @@ class XCPData(BaseModel):
 		d['value_bytes'] = f"{self.value_bytes[:1]}...{self.value_bytes[-1:]}"
 		return pformat(d, indent=4, width=80, compact=True)
 
-# %% ../nbs/01.a2l.ipynb 58
+# %% ../nbs/01.a2l.ipynb 60
 def Get_Init_XCPData(path: Path=Path('../res/init_value_17rows.json'))->List[XCPData]:
 
 	xcp_data = []
@@ -939,7 +949,7 @@ def Get_Init_XCPData(path: Path=Path('../res/init_value_17rows.json'))->List[XCP
 	
 	return xcp_data
 
-# %% ../nbs/01.a2l.ipynb 72
+# %% ../nbs/01.a2l.ipynb 74
 class XCPCalib(BaseModel):
 	"""XCP calibration parameter"""
 	config: XCPConfig = Field(default_factory=XCPConfig, description='XCP configuration')
@@ -952,7 +962,7 @@ class XCPCalib(BaseModel):
 	# 	res.update({'data': data})
 		# return res
 
-# %% ../nbs/01.a2l.ipynb 73
+# %% ../nbs/01.a2l.ipynb 75
 def Get_XCPCalib_From_XCPJSon(path: Path=Path('../res/download.json'))->XCPCalib:
 
 	with open(path) as f:   
@@ -969,7 +979,7 @@ def Get_XCPCalib_From_XCPJSon(path: Path=Path('../res/download.json'))->XCPCalib
 	
 	return xcp_calib
 
-# %% ../nbs/01.a2l.ipynb 74
+# %% ../nbs/01.a2l.ipynb 76
 def Generate_Init_XCPData_From_A2L(
 		a2l: Path=Path('../res/vbu_sample.json'), 
 		keys: List[str]=['TQD_trqTrqSetNormal_MAP_v',
@@ -1012,7 +1022,7 @@ def Generate_Init_XCPData_From_A2L(
 
 	return xcp_data
 
-# %% ../nbs/01.a2l.ipynb 87
+# %% ../nbs/01.a2l.ipynb 89
 def load_a2l_lazy(path: Path, leaves: list[str])->dict:
 	""" Search for the calibration key in the A2L file.
 	Descripttion: Load the A2L file as a dictionary.
@@ -1044,7 +1054,7 @@ def load_a2l_lazy(path: Path, leaves: list[str])->dict:
 
 	return records
 
-# %% ../nbs/01.a2l.ipynb 89
+# %% ../nbs/01.a2l.ipynb 91
 def load_a2l_eager(path: Path, jnode_path: JsonNodePath=JsonNodePath('/PROJECT/MODULE[]'))->dict:
 	""" Load the A2L file as a dictionary.
 	Descripttion: Load the A2L file as a dictionary.
@@ -1072,7 +1082,7 @@ def load_a2l_eager(path: Path, jnode_path: JsonNodePath=JsonNodePath('/PROJECT/M
 			# a2l = json.load(f)
 	return n
 
-# %% ../nbs/01.a2l.ipynb 95
+# %% ../nbs/01.a2l.ipynb 97
 if __name__ == "__main__" and "__file__" in globals():
     
     # parser = get_argparser()
