@@ -5,7 +5,7 @@ __all__ = ['pp', 'repo', 'CAN_TYPES', 'CANType', 'BUS_TYPES', 'BusType', 'get_ar
            'CANFilter', 'ScapyCANSpecs', 'npa_to_packed_buffer', 'flash_xcp', 'downlod_calib_data', 'upload_calib_data',
            'can_context', 'SET_MTA_context', 'XLOAD_context', 'downlod_calib_data2', 'upload_calib_data2']
 
-# %% ../nbs/02.ccp.ipynb 3
+# %% ../nbs/02.ccp.ipynb 4
 import os
 import sys
 import git
@@ -20,7 +20,7 @@ from typing_extensions import Annotated
 from enum import StrEnum
 from pprint import pprint, PrettyPrinter
 
-# %% ../nbs/02.ccp.ipynb 4
+# %% ../nbs/02.ccp.ipynb 5
 import subprocess
 from multiprocessing import Manager
 from multiprocessing.managers import DictProxy
@@ -29,12 +29,12 @@ from cantools.database import Message as MessagerTpl
 from cantools.database.can.database import Database
 import contextlib
 
-# %% ../nbs/02.ccp.ipynb 5
+# %% ../nbs/02.ccp.ipynb 6
 import pandas as pd
 import numpy as np
 import struct
 
-# %% ../nbs/02.ccp.ipynb 7
+# %% ../nbs/02.ccp.ipynb 8
 from candycan.a2l import (
     list_of_strings,
     XCPCalib,
@@ -45,7 +45,7 @@ from candycan.a2l import (
 )
 
 
-# %% ../nbs/02.ccp.ipynb 8
+# %% ../nbs/02.ccp.ipynb 9
 from scapy.all import (
     raw, rdpcap, wrpcap, load_contrib, hexdump,
     ls, conf, load_layer, IP, Ether, TCP
@@ -53,22 +53,22 @@ from scapy.all import (
 # Ether, TCP, hexdump, raw, rdpcap, load_contrib, conf, load_layer, 
 # CANSocket, CAN, wrpcap, CCP, CRO, CONNECT, GET_SEED, UNLOCK, GET_DAQ_SIZE
 
-# %% ../nbs/02.ccp.ipynb 9
+# %% ../nbs/02.ccp.ipynb 10
 load_layer("can")  # CAN
 conf.contribs['CANSocket'] = {'use-python-can': False}
 load_contrib("cansocket") # CANSocket
 load_contrib("automotive.ccp")  # CCP, CRO, CONNECT, DISCONNECT, GET_SEED, UNLOCK, GET_DAQ_SIZE
 
-# %% ../nbs/02.ccp.ipynb 10
+# %% ../nbs/02.ccp.ipynb 11
 pp = PrettyPrinter(indent=4, width=80, compact=True)
 
-# %% ../nbs/02.ccp.ipynb 11
+# %% ../nbs/02.ccp.ipynb 12
 repo = git.Repo("./", search_parent_directories=True)  # get the Repo object of tspace
 if os.path.basename(repo.working_dir) != "candycan":  # I'm in the parent repo!
     repo = repo.submodule("candycan").module()
 pprint(repo.working_dir)
 
-# %% ../nbs/02.ccp.ipynb 12
+# %% ../nbs/02.ccp.ipynb 13
 def get_argparser() -> argparse.ArgumentParser:
 	"""Summary
 	Get argument parser for command line arguments
@@ -159,14 +159,14 @@ def get_argparser() -> argparse.ArgumentParser:
 		help='Output file path')
 	return parser
 
-# %% ../nbs/02.ccp.ipynb 17
+# %% ../nbs/02.ccp.ipynb 18
 CAN_TYPES = set(['NATIVE','PYTHON'])  # Navtive: Native CAN: PYTHON: Python CAN
 # class CanType(StrEnum):
 #     NATIVE = "NATIVE"
 #     PYTHON = "PYTHON"
 CAN_TYPES
 
-# %% ../nbs/02.ccp.ipynb 18
+# %% ../nbs/02.ccp.ipynb 19
 def check_can_type(c: str) -> str:
     """Summary
     Check if the CAN type is valid
@@ -186,7 +186,7 @@ def check_can_type(c: str) -> str:
 
 CANType = Annotated[str, AfterValidator(check_can_type)]
 
-# %% ../nbs/02.ccp.ipynb 20
+# %% ../nbs/02.ccp.ipynb 21
 BUS_TYPES = set(['SOCKET', 'VIRTUAL', 'KVASER', 'PCANUSB', 'IXXAT', 'VECTOR', 'SERIAL', 'NEOVI'])
 # class BusType(StrEnum):
 #     SOCKET = "SOCKET"
@@ -199,7 +199,7 @@ BUS_TYPES = set(['SOCKET', 'VIRTUAL', 'KVASER', 'PCANUSB', 'IXXAT', 'VECTOR', 'S
 #     NEOVI = "NEOVI"
 
 
-# %% ../nbs/02.ccp.ipynb 21
+# %% ../nbs/02.ccp.ipynb 22
 def check_bus_type(b: str) -> str:
     """Summary
     Check if the CAN bus type is valid
@@ -219,7 +219,7 @@ def check_bus_type(b: str) -> str:
 
 BusType = Annotated[str, AfterValidator(check_bus_type)]
 
-# %% ../nbs/02.ccp.ipynb 22
+# %% ../nbs/02.ccp.ipynb 23
 class CANFilter(BaseModel):
     """Summary
     CAN filter for Python CAN bus
@@ -231,7 +231,7 @@ class CANFilter(BaseModel):
     can_id: int = Field(default=630,gt=0,title="CAN message ID",description="CAN message ID")
     can_mask: int = Field(default=0x7ff,gt=0,title="CAN message mask",description="CAN message mask")
 
-# %% ../nbs/02.ccp.ipynb 23
+# %% ../nbs/02.ccp.ipynb 24
 class ScapyCANSpecs(BaseModel):
     can_type: CANType = Field(frozen=True, default='NATIVE', description='CAN type: NATIVE/PYTHON')
     bus_type: BusType = Field(frozen=True, default='VIRTUAL', description='Python CAN bus type')
@@ -244,6 +244,9 @@ class ScapyCANSpecs(BaseModel):
     cntr: int = Field(default=0, ge=0, lt=1_000_000, description='CAN counter')
     receive_own_messages: bool = Field(default=True, description='Receive own messages')
     download_upload: bool = Field(default=True, description='Download if True or upload if False')
+    diff_mode: bool = Field(default=False, description='Differential flashing (download)')
+    diff_threshold: float = Field(default=1e-3, description='Threshold for float value difference')
+    last_download_data: Optional[XCPData] = Field(default=None, description='Last download data')
     
     @computed_field
     def channel(self) -> Union[str, int]:
@@ -268,7 +271,7 @@ class ScapyCANSpecs(BaseModel):
                 
 
 
-# %% ../nbs/02.ccp.ipynb 39
+# %% ../nbs/02.ccp.ipynb 41
 def npa_to_packed_buffer(a: np.ndarray) -> str:
     """ convert a numpy array to a packed string buffer for flashing
     TODO: implementation as numpy ufunc
@@ -282,7 +285,7 @@ def npa_to_packed_buffer(a: np.ndarray) -> str:
     b = [struct.pack("<f", x).hex() for x in np.nditer(a)]
     return ''.join(b)
 
-# %% ../nbs/02.ccp.ipynb 42
+# %% ../nbs/02.ccp.ipynb 44
 def flash_xcp(xcp_calib: XCPCalib, data: pd.DataFrame, diff_flashing: bool=False, download: bool=True):
     """Summary
     Flash XCP data to target
@@ -307,7 +310,7 @@ def flash_xcp(xcp_calib: XCPCalib, data: pd.DataFrame, diff_flashing: bool=False
 
     
 
-# %% ../nbs/02.ccp.ipynb 82
+# %% ../nbs/02.ccp.ipynb 84
 def downlod_calib_data(xcp_calib: XCPCalib, 
                         can_type: CANType, 
                         channel: int,
@@ -392,7 +395,7 @@ def downlod_calib_data(xcp_calib: XCPCalib,
     dto = sock.sr1(cro,timeout=timeout)
     assert dto.return_code == 0x00
 
-# %% ../nbs/02.ccp.ipynb 84
+# %% ../nbs/02.ccp.ipynb 86
 def upload_calib_data(xcp_calib: XCPCalib, 
                         can_type: CANType, 
                         channel: int,
@@ -487,7 +490,7 @@ def upload_calib_data(xcp_calib: XCPCalib,
     dto = sock.sr1(cro,timeout=timeout)
     assert dto.return_code == 0x00
 
-# %% ../nbs/02.ccp.ipynb 86
+# %% ../nbs/02.ccp.ipynb 88
 @contextlib.contextmanager
 def can_context(can_specs: ScapyCANSpecs):
     """Summary
@@ -554,7 +557,7 @@ def can_context(can_specs: ScapyCANSpecs):
         dto = sock.sr1(cro, timeout=can_specs.time_out)
         assert dto.return_code == 0x00
 
-# %% ../nbs/02.ccp.ipynb 87
+# %% ../nbs/02.ccp.ipynb 89
 @contextlib.contextmanager
 def SET_MTA_context(can_specs: ScapyCANSpecs, sock: CANSocket, data: XCPData) -> CAN:
     """Summary
@@ -583,7 +586,7 @@ def SET_MTA_context(can_specs: ScapyCANSpecs, sock: CANSocket, data: XCPData) ->
     
 
 
-# %% ../nbs/02.ccp.ipynb 88
+# %% ../nbs/02.ccp.ipynb 90
 @contextlib.contextmanager
 def XLOAD_context(can_specs: ScapyCANSpecs, sock: CANSocket, data: XCPData, start_index: int, tile_size: int):
     """Summary
@@ -625,20 +628,20 @@ def XLOAD_context(can_specs: ScapyCANSpecs, sock: CANSocket, data: XCPData, star
     finally:
         pass  # do nothing, just pray it'll be OK. Crapy CCP!
 
-# %% ../nbs/02.ccp.ipynb 91
+# %% ../nbs/02.ccp.ipynb 93
 def downlod_calib_data2(xcp_calib: XCPCalib, 
                         can_type: str='NATIVE', 
                         bus_type: str='VIRTUAL', 
                         bit_rate: int=500_000, 
                         timeout: float=1.0,
                         station_address: int = 0x00,
-                        diff_flashing: bool=False):
+                        diff_mode: bool = False
+                        ):
     """Summary
     Download XCP calibration data to target use scapy_can_context
 
     Args:
         xcp_calib (XCPCalib): XCP calibration  to be downloaded into the target
-        diff_flashing (bool): Use differential flashing
     """
     # init counter
     cntr = 0
@@ -654,11 +657,36 @@ def downlod_calib_data2(xcp_calib: XCPCalib,
                             station_address=station_address,
                             cntr=cntr,
                             download_upload=True,  # CCP Download mode
-                            receive_own_messages=True
+                            receive_own_messages=True,
+                            diff_mode=diff_mode
                             )
+    if diff_mode and can_specs.last_download_data is not None:
+        # calculate the difference between the last downloaded data and the current data
+        assert len(can_specs.last_download_data)==len(xcp_calib.data), "XCPData list length is not the same"
+        data_pair = zip(can_specs.last_download_data, xcp_calib.data)
+        xcp_data = []
+        for d0, d1 in zip(xcp_calib.data, can_specs.last_download_data):
+            assert d0.is_compatible(d1), f"incompatible data {d0} vs {d1}"
+            diff_array_index_2d = np.where((d0.value_array_view - d1.value_array_view) > can_specs.diff_threshold)
+            diff_array_index_1d = np.ravel_multi_index(diff_array_index_2d, d0.dim, order='C')
+            diff_array_value = d0[diff_array_index_2d]
+            diff_array_address = d0.address_int + diff_array_index_1d * d0.type_size
+            
+            xcp_data += [XCPData(address=hex(address), 
+                                value=value, 
+                                name=d0.name, 
+                                dim=d0.dim, 
+                                value_type=d0.value_type, 
+                                value_length=d0.value_length
+                                ) 
+                            for address, value in zip(diff_array_address, diff_array_value)
+                        ]
+    else:  # non-diff mode or diff-mode in the first flashing  
+        xcp_data = xcp_calib.data
+        
     try:
         with can_context(can_specs=can_specs) as sock:
-            for d in xcp_calib.data:
+            for d in xcp_data:
                 # SET_MTA
                 with SET_MTA_context(can_specs=can_specs, sock=sock, data=d) as dto:
                     assert dto.return_code==0x00, f"SET_MTA failed for {d.name} at {d.address}"
@@ -679,15 +707,18 @@ def downlod_calib_data2(xcp_calib: XCPCalib,
                         assert dto.return_code == 0x00, f"DNLOAD failed at last tile: {i} of size {last_tile}"
     except Exception as e:
         print(e)
+    
+    # keep the last downloaded data for diff mode
+    can_specs.last_download_data = xcp_calib.data
 
-# %% ../nbs/02.ccp.ipynb 94
+# %% ../nbs/02.ccp.ipynb 96
 def upload_calib_data2(xcp_calib: XCPCalib, 
                         can_type: str='NATIVE', 
                         bus_type: str='VIRTUAL', 
                         bit_rate: int=500_000, 
                         timeout: float=1.0,
                         station_address: int = 0x00,
-                        diff_flashing: bool=False):
+                        ):
 
     """Summary
     Upload XCP calibration data from target to host, the result will update the xcp_calib.data field
@@ -745,7 +776,7 @@ def upload_calib_data2(xcp_calib: XCPCalib,
        print(e)
 
 
-# %% ../nbs/02.ccp.ipynb 99
+# %% ../nbs/02.ccp.ipynb 101
 if __name__ == "__main__" and "__file__" in globals():  # only run if this file is called directly
 
     protocol = inquirer.select(
