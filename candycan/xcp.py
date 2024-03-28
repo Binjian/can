@@ -179,7 +179,7 @@ def flash_xcp(xcp_calib: XCPCalib, data: pd.DataFrame, diff_flashing: bool=False
 # %% ../nbs/03.xcp.ipynb 25
 from scapy.all import *
 
-# %% ../nbs/03.xcp.ipynb 52
+# %% ../nbs/03.xcp.ipynb 51
 if __name__ == "__main__" and "__file__" in globals():  # only run if this file is called directly
 
     protocol = inquirer.select(

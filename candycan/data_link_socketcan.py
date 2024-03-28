@@ -60,7 +60,7 @@ def get_argparser() -> argparse.ArgumentParser:
         "-c",
         "--channel",
         type=str,
-        default="vcan1",
+        default="vcan0",
         help="The CAN bus channel to connect to",
     )
 
