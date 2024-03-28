@@ -946,19 +946,6 @@ if __name__ == "__main__" and "__file__" in globals():  # only run if this file 
                             diff_mode = args.diff_mode,
                             diff_threshold= args.diff_threshold
                             )
-    can_specs = ScapyCANSpecs(can_type='NATIVE', 
-                            bus_type='VIRTUAL', 
-                            channel_serial_number=0,
-                            download_can_id=xcp_calib.config.download_can_id,
-                            upload_can_id=xcp_calib.config.upload_can_id,
-                            can_filters=can_filters,
-                            bit_rate=500_000,
-                            time_out=1.0,
-                            station_address=0x00,
-                            cntr=0,
-                            receive_own_messages=True,
-                            download_upload=True
-                            )
     can_specs.download_upload = False                        
     upload_calib_data2(xcp_calib=xcp_calib, can_specs=can_specs)
     can_specs.download_upload = True                       
