@@ -81,25 +81,25 @@ def get_argparser() -> argparse.ArgumentParser:
 	parser.add_argument(
 		'--protocol',
 		type=str,
-		choices=['ccp', 'xcp'],
-		default='ccp',
-		help='Protocol to use: ccp/xcp',
+		choices=['CCP', 'XCP'],
+		default='CCP',
+		help='Protocol to use: CCP/XCP',
 	)
 
 	parser.add_argument(
 		'--can_type',
 		type=str,
-		choices=['native', 'python'],
-		default='native',
-		help='CAN type to use: native/python',
+		choices=['NATIVE', 'PYTHON'],
+		default='NATIVE',
+		help='CAN type to use: NATIVE/PYTHON',
 	)
 
 	parser.add_argument(
 		'--bus_type',
 		type=str,
-		choices=['socket', 'virtual', 'kvaser'],
-		default='virtual',
-		help='Bus type to use: socket/virtual/kvaser',
+		choices=['SOCKET', 'VIRTUAL', 'KVASER'],
+		default='VIRTUAL',
+		help='Bus type to use: SOCKET/VIRTUAL/KVASER',
 	)
 
 	parser.add_argument(
@@ -682,11 +682,7 @@ def XLOAD_context(can_specs: ScapyCANSpecs, sock: CANSocket, data: XCPData, star
 
 # %% ../nbs/02.ccp.ipynb 94
 def upload_calib_data2(xcp_calib: XCPCalib, 
-                        can_type: str='NATIVE', 
-                        bus_type: str='VIRTUAL', 
-                        bit_rate: int=500_000, 
-                        timeout: float=1.0,
-                        station_address: int = 0x00,
+                        can_specs: ScapyCANSpecs
                         )->None:
 
     """Summary
@@ -700,20 +696,6 @@ def upload_calib_data2(xcp_calib: XCPCalib,
     # init counter
     cntr = 0
 
-    can_filters = [{'can_id': xcp_calib.config.upload_can_id, 'can_mask': 0x7FF}]
-    can_specs = ScapyCANSpecs(can_type=can_type,
-                            bus_type=bus_type,
-                            channel_serial_number=xcp_calib.config.channel,
-                            download_can_id=xcp_calib.config.download_can_id,
-                            upload_can_id=xcp_calib.config.upload_can_id,
-                            can_filters=can_filters,
-                            bit_rate=bit_rate,
-                            time_out=timeout,
-                            station_address=station_address,
-                            cntr=cntr,
-                            receive_own_messages=True,
-                            download_upload=False  # CCP Upload mode
-                            )
     try:
         with can_context(can_specs=can_specs) as sock:
             for d in xcp_calib.data:
@@ -746,13 +728,8 @@ def upload_calib_data2(xcp_calib: XCPCalib,
 
 # %% ../nbs/02.ccp.ipynb 95
 def downlod_calib_data2(xcp_calib: XCPCalib, 
-                        can_type: str='NATIVE', 
-                        bus_type: str='VIRTUAL', 
-                        bit_rate: int=500_000, 
-                        timeout: float=1.0,
-                        station_address: int = 0x00,
-                        diff_mode: bool = False
-                        ):
+                        can_specs: ScapyCANSpecs
+                        )->None:
     """Summary
     Download XCP calibration data to target use scapy_can_context
 
@@ -762,32 +739,13 @@ def downlod_calib_data2(xcp_calib: XCPCalib,
     # init counter
     cntr = 0
 
-    can_filters = [{'can_id': xcp_calib.config.upload_can_id, 'can_mask': 0x7FF}]
-    can_specs = ScapyCANSpecs(can_type=can_type,
-                            bus_type=bus_type,
-                            channel_serial_number=xcp_calib.config.channel,
-                            download_can_id=xcp_calib.config.download_can_id,
-                            upload_can_id=xcp_calib.config.download_can_id,
-                            can_filters=can_filters,
-                            bit_rate=bit_rate,
-                            time_out=timeout,
-                            station_address=station_address,
-                            cntr=cntr,
-                            download_upload=True,  # CCP Download mode
-                            receive_own_messages=True,
-                            diff_mode=diff_mode
-                            )
-    if diff_mode :
+    if can_specs.diff_mode :
         if can_specs.last_download_data is None:  # diff mode in the first run, needs to upload first to populate last_download_data
             last_xcp_calib = XCPCalib(config=xcp_calib.config, data=xcp_calib.data)
-            upload_calib_data2(xcp_calib=last_xcp_calib, 
-                                can_type=can_type, 
-                                bus_type=bus_type, 
-                                bit_rate=bit_rate, 
-                                timeout=timeout, 
-                                station_address=station_address
-                            )
+            can_specs.download_upload = False
+            upload_calib_data2(xcp_calib=last_xcp_calib, can_specs=can_specs)
             can_specs.last_download_data = last_xcp_calib.data
+            can_specs.download_upload = True
         # calculate the difference between the last downloaded data and the current data
         assert len(can_specs.last_download_data)==len(xcp_calib.data), "XCPData list length is not the same"
         data_pair = zip(can_specs.last_download_data, xcp_calib.data)
@@ -844,11 +802,40 @@ if __name__ == "__main__" and "__file__" in globals():  # only run if this file 
     protocol = inquirer.select(
         message="What's the protocol?",
         choices=[
-            Choice(value="ccp", name="CCP"),
-            Choice(value="xcp", name="XCP"),
+            Choice(value="CCP", name="CCP"),
+            Choice(value="XCP", name="XCP"),
         ],
-        default="ccp",
+        default="CCP",
     ).execute()
+
+    can = inquirer.select(
+        message="What's the type of CAN?",
+        choices=[
+            Choice(value="NATIVE", name="Native Linux SocketCAN"),
+            Choice(value="PYTHON", name="Python CAN"),
+        ],
+        default="NATIVE",
+    ).execute()
+
+    if can == 'NATIVE':
+        bus = inquirer.select(
+            message="What's the type of bus?",
+            choices=[
+                Choice(value="SOCKET", name="Physical CAN"),
+                Choice(value="VIRTUAL", name="Virtual CAN"),
+            ],
+            default="SOCKET",
+        ).execute()
+    else:  # can == 'PYTHON'
+        bus = inquirer.select(
+            message="What's the type of bus?",
+            choices=[
+                Choice(value="SOCKET", name="Physical SocketCAN"),
+                Choice(value="VIRTUAL", name="Virtual SocketCAN"),
+                Choice(value="KVASER", name="Kvaser CAN"),
+            ],
+            default="SOCKET",
+        ).execute()
 
     download = inquirer.confirm(
         message="Downloading(host->target)?",
@@ -861,7 +848,7 @@ if __name__ == "__main__" and "__file__" in globals():  # only run if this file 
         message="Differential Flashing?",
         confirm_letter="y",
         reject_letter="n",
-        default=False,
+        default=True,
     ).execute()
 
     a2l_file_path = inquirer.text(
@@ -882,29 +869,13 @@ if __name__ == "__main__" and "__file__" in globals():  # only run if this file 
     # 	default=r"TQD_trqTrqSetNormal_MAP_v, VBU_L045A_CWP_05_09T_AImode_CM_single, Lookup2D_FLOAT32_IEEE, Lookup2D_X_FLOAT32_IEEE, Scalar_FLOAT32_IEEE, TQD_vVehSpd, TQD_vSgndSpd_MAP_y, TQD_pctAccPedPosFlt, TQD_pctAccPdl_MAP_x"
     # ).execute()
 
-    can_channel = inquirer.number(
-        message="CAN channel for flashing",
-        min_allowed=0,
-        max_allowed=32,
-        validate=EmptyInputValidator(),
-        default=3,
-    ).execute()
-
-    download_id = inquirer.number(
-        message="CAN ID for downloading",
-        min_allowed=0,
-        max_allowed=9999,
-        validate=EmptyInputValidator(),
-        default=630,
-    ).execute()
-
-    upload_id = inquirer.number(
-        message="CAN ID for uploading",
-        min_allowed=0,
-        max_allowed=9999,
-        validate=EmptyInputValidator(),
-        default=631,
-    ).execute()
+    # can_channel = inquirer.number(
+    #     message="CAN channel for flashing",
+    #     min_allowed=0,
+    #     max_allowed=32,
+    #     validate=EmptyInputValidator(),
+    #     default=3,
+    # ).execute()
 
     input_file_path = inquirer.text(
         message="Input file path",
@@ -920,34 +891,76 @@ if __name__ == "__main__" and "__file__" in globals():  # only run if this file 
 
     args = get_argparser().parse_args()
     args.protocol = protocol
+    args.can_type = can
+    args.bus_type = bus
     args.download = download
-    args.diff_flashing = differential_flashing
+    args.diff_mode = differential_flashing
     # args.a2l = a2l_file_path
     # args.node_path = node_path
     # args.leaves = leaves
-    args.channel = can_channel
-    args.download_id = download_id
-    args.upload_id = upload_id
     args.input = repo.working_dir+input_file_path
     args.output = repo.working_dir+output_file_path
     pprint(args)
 
     xcp_calib_from_xcpjson = Get_XCPCalib_From_XCPJSon(args.input)
+
+    args.download_can_id = xcp_calib_from_xcpjson.config.download_can_id
+    args.upload_can_id = xcp_calib_from_xcpjson.config.upload_can_id
+    args.channel_serial_number = xcp_calib_from_xcpjson.config.channel
+
     xcp_data = Generate_Init_XCPData_From_A2L(
         a2l=args.a2l, keys=args.leaves, node_path=args.node_path
-    )
+    )  # initial xcp_data has value 0
     try:
         XCPData.model_validate(xcp_data)
     except ValidationError as exc:
         print(exc)
 
-    xcp_data.value = xcp_calib_from_xcpjson.data[0].value
+    # emulate torque table input as numpy array
+    xcp_data_value_npa = xcp_calib_from_xcpjson.data[0].value_array_view
+    xcp_data.value = xcp_data_value_npa.astype(np.float32).tobytes().hex()
     pprint(xcp_data)
 
     xcp_calib = XCPCalib(
         config=XCPConfig(
-            channel=args.channel, download=args.download_id, upload=args.upload_id
+            channel=args.channel_serial_number, download=args.download_can_id, upload=args.upload_can_id
         ),
         data=[xcp_data],
     )
     pprint(xcp_calib)
+
+    can_filters = [{'can_id': xcp_calib.config.upload_can_id, 'can_mask': 0x7FF}]
+    cntr = 0
+    can_specs = ScapyCANSpecs(can_type=args.can_type,
+                            bus_type=args.bus_type,
+                            channel_serial_number=args.channel_serial_number,
+                            download_can_id=xcp_calib.config.download_can_id,
+                            upload_can_id=xcp_calib.config.upload_can_id,
+                            can_filters=can_filters,
+                            bit_rate=args.bit_rate,
+                            time_out=args.time_out,
+                            station_address=args.station_address,
+                            cntr=cntr,
+                            receive_own_messages=True,
+                            download_upload=args.download,  # CCP Upload mode
+                            diff_mode = args.diff_mode,
+                            diff_threshold= args.diff_threshold
+                            )
+    can_specs = ScapyCANSpecs(can_type='NATIVE', 
+                            bus_type='VIRTUAL', 
+                            channel_serial_number=0,
+                            download_can_id=xcp_calib.config.download_can_id,
+                            upload_can_id=xcp_calib.config.upload_can_id,
+                            can_filters=can_filters,
+                            bit_rate=500_000,
+                            time_out=1.0,
+                            station_address=0x00,
+                            cntr=0,
+                            receive_own_messages=True,
+                            download_upload=True
+                            )
+    can_specs.download_upload = False                        
+    upload_calib_data2(xcp_calib=xcp_calib, can_specs=can_specs)
+    can_specs.download_upload = True                       
+    downlod_calib_data2(xcp_calib=xcp_calib,can_specs=can_specs)
+    
