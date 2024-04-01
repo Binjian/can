@@ -796,7 +796,7 @@ def downlod_calib_data2(xcp_calib: XCPCalib,
     # keep the last downloaded data for diff mode
     can_specs.last_download_data = xcp_calib.data
 
-# %% ../../nbs/vcantest/ccp.socket.ipynb 97
+# %% ../../nbs/vcantest/ccp.socket.ipynb 99
 if __name__ == "__main__" and "__file__" in globals():  # only run if this file is called directly
 
     protocol = inquirer.select(
