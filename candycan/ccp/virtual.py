@@ -358,7 +358,7 @@ def flash_xcp(xcp_calib: XCPCalib, data: pd.DataFrame, diff_flashing: bool=False
 
     
 
-# %% ../../nbs/02.ccp.virtual.ipynb 85
+# %% ../../nbs/02.ccp.virtual.ipynb 83
 def downlod_calib_data(xcp_calib: XCPCalib, 
                         can_type: CANType, 
                         channel: int,
@@ -443,7 +443,7 @@ def downlod_calib_data(xcp_calib: XCPCalib,
     dto = sock.sr1(cro,timeout=timeout)
     assert dto.return_code == 0x00
 
-# %% ../../nbs/02.ccp.virtual.ipynb 87
+# %% ../../nbs/02.ccp.virtual.ipynb 85
 def upload_calib_data(xcp_calib: XCPCalib, 
                         can_type: CANType, 
                         channel: int,
@@ -538,7 +538,7 @@ def upload_calib_data(xcp_calib: XCPCalib,
     dto = sock.sr1(cro,timeout=timeout)
     assert dto.return_code == 0x00
 
-# %% ../../nbs/02.ccp.virtual.ipynb 89
+# %% ../../nbs/02.ccp.virtual.ipynb 87
 @contextlib.contextmanager
 def can_context(can_specs: ScapyCANSpecs):
     """Summary
@@ -590,9 +590,9 @@ def can_context(can_specs: ScapyCANSpecs):
         raise Exception(f"Failed to create CAN socket: {e}")
 
     # CONNECT
-    can_specs.cntr += 1
     cro = CCP(identifier=can_specs.download_can_id)/CRO(ctr=can_specs.cntr)/CONNECT(station_address=can_specs.station_address)
     dto = sock.sr1(cro, timeout=can_specs.time_out)
+    can_specs.cntr += 1
     assert dto is not None, f"Failed to connect to target, timeout={can_specs.time_out} seconds"
     assert dto.return_code == 0x00
     
@@ -604,12 +604,12 @@ def can_context(can_specs: ScapyCANSpecs):
         raise e
     finally:
         # DISCONNECT
-        can_specs.cntr += 1
         cro = CCP(identifier=can_specs.download_can_id)/CRO(ctr=can_specs.cntr)/DISCONNECT(station_address=can_specs.station_address)
         dto = sock.sr1(cro, timeout=can_specs.time_out)
+        can_specs.cntr += 1
         assert dto.return_code == 0x00
 
-# %% ../../nbs/02.ccp.virtual.ipynb 90
+# %% ../../nbs/02.ccp.virtual.ipynb 88
 @contextlib.contextmanager
 def SET_MTA_context(can_specs: ScapyCANSpecs, sock: CANSocket, data: XCPData) -> CAN:
     """Summary
@@ -623,9 +623,9 @@ def SET_MTA_context(can_specs: ScapyCANSpecs, sock: CANSocket, data: XCPData) ->
     """
 
     # SET_MTA 
-    can_specs.cntr += 1
     cro = CCP(identifier=can_specs.download_can_id)/CRO(ctr=can_specs.cntr)/SET_MTA(address=int(data.address, 16))
     dto = sock.sr1(cro, timeout=can_specs.time_out)
+    can_specs.cntr += 1
     assert dto.return_code == 0x00
     try:
         yield dto
@@ -638,7 +638,7 @@ def SET_MTA_context(can_specs: ScapyCANSpecs, sock: CANSocket, data: XCPData) ->
     
 
 
-# %% ../../nbs/02.ccp.virtual.ipynb 91
+# %% ../../nbs/02.ccp.virtual.ipynb 89
 @contextlib.contextmanager
 def XLOAD_context(can_specs: ScapyCANSpecs, sock: CANSocket, data: XCPData, start_index: int, tile_size: int):
     """Summary
@@ -651,7 +651,6 @@ def XLOAD_context(can_specs: ScapyCANSpecs, sock: CANSocket, data: XCPData, star
         CANSocket: CAN socket object
     """
 
-    can_specs.cntr += 1
     if can_specs.download_upload:
         assert tile_size <=6 and tile_size >0, f"In CCP Tile size must be non-zero and less than 6 bytes, got: {tile_size}"
         if tile_size == 6:
@@ -671,6 +670,8 @@ def XLOAD_context(can_specs: ScapyCANSpecs, sock: CANSocket, data: XCPData, star
         cro = CCP(identifier=can_specs.download_can_id)/CRO(ctr=can_specs.cntr)/UPLOAD(size=tile_size)  #start_index or data not used for uploading. target ECU will increment the address!
         dto = sock.sr1(cro,timeout=can_specs.time_out)
         assert dto.return_code == 0x00
+    
+    can_specs.cntr += 1
     try: 
         yield dto
     except TimeoutError:
@@ -680,7 +681,7 @@ def XLOAD_context(can_specs: ScapyCANSpecs, sock: CANSocket, data: XCPData, star
     finally:
         pass  # do nothing, just pray it'll be OK. Crapy CCP!
 
-# %% ../../nbs/02.ccp.virtual.ipynb 94
+# %% ../../nbs/02.ccp.virtual.ipynb 92
 def upload_calib_data2(xcp_calib: XCPCalib, 
                         can_specs: ScapyCANSpecs
                         )->None:
@@ -726,7 +727,7 @@ def upload_calib_data2(xcp_calib: XCPCalib,
     except Exception as e:
         print(e)
 
-# %% ../../nbs/02.ccp.virtual.ipynb 95
+# %% ../../nbs/02.ccp.virtual.ipynb 93
 def downlod_calib_data2(xcp_calib: XCPCalib, 
                         can_specs: ScapyCANSpecs
                         )->None:
@@ -748,7 +749,7 @@ def downlod_calib_data2(xcp_calib: XCPCalib,
             can_specs.download_upload = True
         # calculate the difference between the last downloaded data and the current data
         assert len(can_specs.last_download_data)==len(xcp_calib.data), "XCPData list length is not the same"
-        data_pair = zip(can_specs.last_download_data, xcp_calib.data)
+        # data_pair = zip(can_specs.last_download_data, xcp_calib.data)
         xcp_data = []
         for d0, d1 in zip(xcp_calib.data, can_specs.last_download_data):
             assert d0.is_compatible(d1), f"incompatible data {d0} vs {d1}"
@@ -796,7 +797,7 @@ def downlod_calib_data2(xcp_calib: XCPCalib,
     # keep the last downloaded data for diff mode
     can_specs.last_download_data = xcp_calib.data
 
-# %% ../../nbs/02.ccp.virtual.ipynb 101
+# %% ../../nbs/02.ccp.virtual.ipynb 99
 if __name__ == "__main__" and "__file__" in globals():  # only run if this file is called directly
 
     protocol = inquirer.select(
