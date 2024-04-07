@@ -11,7 +11,8 @@ website:
       - 06.dbc.ipynb
       - section: vcantest
         contents:
-          - vcantest/ccp.socket.ipynb
+          - vcantest/ccp.socket_over_scapy.ipynb
+          - vcantest/ccp.socketcan.ipynb
           - vcantest/receive_messasge.ipynb
           - vcantest/send_message.ipynb
           - vcantest/send_receive_message_mp.ipynb

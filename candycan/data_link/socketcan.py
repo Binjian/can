@@ -106,7 +106,9 @@ def signal_usr1(signum, frame):
 
 # %% ../../nbs/04.data_link.socketcan.ipynb 9
 def send_msg(db:Database, message:str, payload:bytes, channel:str, bitrate:int, bus_type: str, is_extended: bool) -> None:
-
+    """
+    send a CAN frame with bytes interface, the multiprocessing interface has to use PIPE which is character based.
+    """
     message_definition = db.get_message_by_name(message)
     data_dict = json.loads(payload.decode())
 
@@ -124,7 +126,7 @@ def send_msg(db:Database, message:str, payload:bytes, channel:str, bitrate:int, 
         bus.send(message)
 
 
-# %% ../../nbs/04.data_link.socketcan.ipynb 17
+# %% ../../nbs/04.data_link.socketcan.ipynb 18
 def receive_message(message_proxy: DictProxy,bus: can.interface.Bus)->None:
 	print('waiting for message')
 	msg:can.Message = bus.recv()
@@ -133,7 +135,7 @@ def receive_message(message_proxy: DictProxy,bus: can.interface.Bus)->None:
 	message_proxy['arbitration_id'] = msg.arbitration_id
 	message_proxy['data']=msg.data
 
-# %% ../../nbs/04.data_link.socketcan.ipynb 27
+# %% ../../nbs/04.data_link.socketcan.ipynb 28
 if __name__ == "__main__" and "__file__" in globals():   # in order to be compatible for both script and notebnook
 
     # print(os.getcwd())
