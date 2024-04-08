@@ -87,7 +87,7 @@ def get_argparser() -> argparse.ArgumentParser:
 		'--bus_type',
 		type=str,
 		choices=['SOCKET', 'VIRTUAL'],
-		default='VIR1TUAL',
+		default='SOCKET',
 		help='Bus type to use: SOCKET/VIRTUAL',
 	)
 
@@ -356,7 +356,7 @@ def flash_xcp(xcp_calib: XCPCalib, data: pd.DataFrame, diff_flashing: bool=False
 
     
 
-# %% ../../nbs/vcantest/ccp.socketcan.ipynb 98
+# %% ../../nbs/vcantest/ccp.socketcan.ipynb 103
 @contextlib.contextmanager
 def can_context(can_specs: ScapyCANSpecs):
     """Summary
@@ -366,73 +366,14 @@ def can_context(can_specs: ScapyCANSpecs):
         can_specs (ScapyCANSpecs): CAN specs including can type, bus type, channel, etc.
 
     Yields:
-        CANSocket: CAN socket object
+        Bus: Python-CAN Bus object
     """
     # create a socket
-    try:
-        match can_specs.can_type:
-            case 'NATIVE':
-                if not 'can' in sys.modules:
-                    load_layer("can")
-                if not 'cansocket' in conf.contribs:
-                    conf.contribs['CANSocket'] = {'use-python-can': False}
-                    load_contrib("cansocket")
-                sock = CANSocket(bustype='socketcan',
-                                    channel=can_specs.channel, 
-                                    can_filter=can_specs.can_filters, 
-                                    bit_rate = can_specs.bit_rate, 
-                                    receive_own_messages=can_specs.receive_own_messages
-                                )
-            case 'PYTHON': 
-                if not 'can' in sys.modules:
-                    load_layer("can")
-                if not 'cansocket' in conf.contribs:
-                    conf.contribs['CANSocket'] = {'use-python-can': True}
-                    load_contrib("cansocket")
-                match bus_type:
-                    case 'SOCKET' | 'VIRTUAL':
-                        sock = CANSocket(bustype='socketcan', 
-                                            channel=can_specs.channel, 
-                                            basecls=CCP,
-                                            can_filter=can_specs.can_filters, 
-                                            bitrate=can_specs.bit_rate, 
-                                            receive_own_messages=can_specs.receive_own_messages
-                                        )
-                    case 'KVASER' | 'VECTOR':
-                        sock = CANSocket(bustype=can_specs.bus_type.lower(), 
-                                            channel=can_specs.channel, 
-                                            basecls=CCP,
-                                            can_filter=can_specs.can_filters, 
-                                            bitrate=can_specs.bit_rate, 
-                                            receive_own_messages=can_specs.receive_own_messages)
-                    case _:
-                        raise ValueError(f"Invalid CAN bus type: {can_specs.bus_type}, implemented valid types are: SOCKET, VIRTUAL, KVASER, VECTOR")
-    except Exception as e:
-        raise Exception(f"Failed to create CAN socket: {e}")
+ 
 
-    # CONNECT
-    cro = CCP(identifier=can_specs.download_can_id)/CRO(ctr=can_specs.cntr)/CONNECT(station_address=can_specs.station_address)
-    dto = sock.sr1(cro, timeout=can_specs.time_out)
-    assert dto is not None, f"Failed to connect to target, timeout={can_specs.time_out} seconds"
-    assert dto.return_code == 0x00
-    can_specs.cntr += 1
-    
-    try: 
-        yield sock
-    except TimeoutError:
-        raise TimeoutError(f"CAN socket timeout: {can_specs.time_out} seconds")
-    except Exception as e:
-        raise e
-    finally:
-        # DISCONNECT
-        cro = CCP(identifier=can_specs.download_can_id)/CRO(ctr=can_specs.cntr)/DISCONNECT(station_address=can_specs.station_address)
-        dto = sock.sr1(cro, timeout=can_specs.time_out)
-        assert dto.return_code == 0x00
-        can_specs.cntr += 1
-
-# %% ../../nbs/vcantest/ccp.socketcan.ipynb 99
+# %% ../../nbs/vcantest/ccp.socketcan.ipynb 104
 @contextlib.contextmanager
-def SET_MTA_context(can_specs: ScapyCANSpecs, sock: CANSocket, data: XCPData) -> CAN:
+def SET_MTA_context(can_specs: ScapyCANSpecs, bus: can.interface.Bus, data: XCPData):
     """Summary
     Context manager for scapy set_mta 
 
@@ -444,24 +385,24 @@ def SET_MTA_context(can_specs: ScapyCANSpecs, sock: CANSocket, data: XCPData) ->
     """
 
     # SET_MTA 
-    cro = CCP(identifier=can_specs.download_can_id)/CRO(ctr=can_specs.cntr)/SET_MTA(address=int(data.address, 16))
-    dto = sock.sr1(cro, timeout=can_specs.time_out)
-    assert dto.return_code == 0x00
-    can_specs.cntr += 1
-    try:
-        yield dto
-    except TimeoutError:
-        raise TimeoutError(f"CAN socket timeout: {can_specs.time_out} seconds")
-    except Exception as e:
-        raise e
-    finally:
-        pass  # do nothing, just pray it'll be OK. Crapy CCP!
+    # cro = CCP(identifier=can_specs.download_can_id)/CRO(ctr=can_specs.cntr)/SET_MTA(address=int(data.address, 16))
+    # dto = sock.sr1(cro, timeout=can_specs.time_out)
+    # assert dto.return_code == 0x00
+    # can_specs.cntr += 1
+    # try:
+    #     yield dto
+    # except TimeoutError:
+    #     raise TimeoutError(f"CAN socket timeout: {can_specs.time_out} seconds")
+    # except Exception as e:
+    #     raise e
+    # finally:
+    #     pass  # do nothing, just pray it'll be OK. Crapy CCP!
     
 
 
-# %% ../../nbs/vcantest/ccp.socketcan.ipynb 100
+# %% ../../nbs/vcantest/ccp.socketcan.ipynb 105
 @contextlib.contextmanager
-def XLOAD_context(can_specs: ScapyCANSpecs, sock: CANSocket, data: XCPData, start_index: int, tile_size: int):
+def XLOAD_context(can_specs: ScapyCANSpecs, bus: can.interface.Bus, data: XCPData, start_index: int, tile_size: int):
     """Summary
     Context manager for scapy load (download or upload)
 
@@ -471,37 +412,9 @@ def XLOAD_context(can_specs: ScapyCANSpecs, sock: CANSocket, data: XCPData, star
     Yields:
         CANSocket: CAN socket object
     """
+    pass
 
-    if can_specs.download_upload:
-        assert tile_size <=6 and tile_size >0, f"In CCP Tile size must be non-zero and less than 6 bytes, got: {tile_size}"
-        if tile_size == 6:
-            # cro = CCP(identifier=xcp_calib.config.download_can_id)/CRO(ctr=ctr)/DNLOAD_6(data=d.value_bytes[i*tile_size:(i+1)*tile_size])
-            cro = CCP(identifier=can_specs.download_can_id)/CRO(ctr=can_specs.cntr)/DNLOAD_6(data=d.value_bytes[start_index:start_index+tile_size])
-            dto = sock.sr1(cro,timeout=can_specs.time_out)
-            assert dto.return_code == 0x00
-        else: 
-            # start_index = tiles * tile_size
-            # cro = CCP(identifier=xcp_calib.config.download_can_id)/CRO(ctr=ctr)/DNLOAD(data=d.value_bytes[start_index:start_index+last_tile])
-            cro = CCP(identifier=can_specs.download_can_id)/CRO(ctr=can_specs.cntr)/DNLOAD(data=d.value_bytes[start_index:start_index+tile_size])
-            dto = sock.sr1(cro,timeout=can_specs.time_out)
-            assert dto.return_code == 0x00
-    else:  # False if in upload mode
-        assert tile_size <=5 and tile_size >0, f"In CCP Tile size must be non-zero and less than 5 bytes for Uploading, got: {tile_size}"
-        # cro = CCP(identifier=xcp_calib.config.download_can_id)/CRO(ctr=ctr)/DNLOAD_6(data=d.value_bytes[i*tile_size:(i+1)*tile_size])
-        cro = CCP(identifier=can_specs.download_can_id)/CRO(ctr=can_specs.cntr)/UPLOAD(size=tile_size)  #start_index or data not used for uploading. target ECU will increment the address!
-        dto = sock.sr1(cro,timeout=can_specs.time_out)
-        assert dto.return_code == 0x00
-    can_specs.cntr += 1
-    try: 
-        yield dto
-    except TimeoutError:
-        raise TimeoutError(f"CAN socket timeout: {can_specs.time_out} seconds")
-    except Exception as e:
-        raise e
-    finally:
-        pass  # do nothing, just pray it'll be OK. Crapy CCP!
-
-# %% ../../nbs/vcantest/ccp.socketcan.ipynb 102
+# %% ../../nbs/vcantest/ccp.socketcan.ipynb 107
 def upload_calib_data2(xcp_calib: XCPCalib, 
                         can_specs: ScapyCANSpecs
                         )->None:
@@ -516,39 +429,9 @@ def upload_calib_data2(xcp_calib: XCPCalib,
 
     # init counter
     cntr = 0
+    pass
 
-    try:
-        with can_context(can_specs=can_specs) as sock:
-            for d in xcp_calib.data:
-                # SET_MTA
-                with SET_MTA_context(can_specs=can_specs, sock=sock, data=d) as dto:
-                    assert dto.return_code==0x00, f"SET_MTA failed for {d.name} at {d.address}"
-
-                    # Determine message tiling
-                    len_in_bytes = d.type_size * d.dim[0] * d.dim[1]
-                    # assert len_in_bytes == len(d.value_bytes)
-                    tile_size = 5
-                    tiles = len_in_bytes // tile_size 
-                    last_tile = len_in_bytes % tile_size
-
-                    # Upload tiles with tile_size (maximal 5 as defined by CCP） bytes with UPLOAD
-                    ba_uploaded = bytearray()
-                    assert can_specs.download_upload == False, f"Recheck the download_upload flag, it should be False for UPLOAD"
-                    for i in range(tiles):
-                        with XLOAD_context(can_specs=can_specs, sock=sock, data=d, start_index=i*tile_size, tile_size=tile_size) as upload_dto:
-                            assert upload_dto.return_code == 0x00, f"UPLOAD failed at tile: {i}"
-                            ba_uploaded += upload_dto.data
-
-                    with XLOAD_context(can_specs=can_specs, sock=sock, data=d, start_index=i*tile_size, tile_size=last_tile) as upload_dto:
-                        assert upload_dto.return_code == 0x00, f"UPLOAD failed at tile: {i}"
-                        ba_uploaded += upload_dto.data
-                        ba_uploaded += upload_dto.data
-
-                    d.value = ba_uploaded.hex()
-    except Exception as e:
-        print(e)
-
-# %% ../../nbs/vcantest/ccp.socketcan.ipynb 103
+# %% ../../nbs/vcantest/ccp.socketcan.ipynb 108
 def downlod_calib_data2(xcp_calib: XCPCalib, 
                         can_specs: ScapyCANSpecs
                         )->None:
@@ -591,33 +474,34 @@ def downlod_calib_data2(xcp_calib: XCPCalib,
         xcp_data = xcp_calib.data
         
     try:
-        with can_context(can_specs=can_specs) as sock:
-            for d in xcp_data:
-                # SET_MTA
-                with SET_MTA_context(can_specs=can_specs, sock=sock, data=d) as dto:
-                    assert dto.return_code==0x00, f"SET_MTA failed for {d.name} at {d.address}"
-                    # Determine message tiling
-                    len_in_bytes = d.type_size * d.dim[0] * d.dim[1]
-                    assert len_in_bytes == len(d.value_bytes)
-                    tile_size = 6  # 6 bytes per tile as defined in CCP for DNLOAD_6
-                    tiles = len_in_bytes //tile_size 
-                    last_tile = len_in_bytes % tile_size
-                    # Download full size tiles with DNLOAD_6
-                    for i in range(tiles):
-                        start_index = i*tile_size
-                        with XLOAD_context(can_specs=can_specs, sock=sock, data=d, start_index=start_index, tile_size=tile_size) as dto:
-                            assert dto.return_code == 0x00, f"DNLOAD_6 failed at tile: {i}"
+        pass
+        # with can_context(can_specs=can_specs) as sock:
+        #     for d in xcp_data:
+        #         # SET_MTA
+        #         with SET_MTA_context(can_specs=can_specs, sock=sock, data=d) as dto:
+        #             assert dto.return_code==0x00, f"SET_MTA failed for {d.name} at {d.address}"
+        #             # Determine message tiling
+        #             len_in_bytes = d.type_size * d.dim[0] * d.dim[1]
+        #             assert len_in_bytes == len(d.value_bytes)
+        #             tile_size = 6  # 6 bytes per tile as defined in CCP for DNLOAD_6
+        #             tiles = len_in_bytes //tile_size 
+        #             last_tile = len_in_bytes % tile_size
+        #             # Download full size tiles with DNLOAD_6
+        #             for i in range(tiles):
+        #                 start_index = i*tile_size
+        #                 with XLOAD_context(can_specs=can_specs, sock=sock, data=d, start_index=start_index, tile_size=tile_size) as dto:
+        #                     assert dto.return_code == 0x00, f"DNLOAD_6 failed at tile: {i}"
 
-                    start_index = tiles * tile_size
-                    with XLOAD_context(can_specs=can_specs, sock=sock, data=d, start_index=start_index, tile_size=last_tile) as dto:
-                        assert dto.return_code == 0x00, f"DNLOAD failed at last tile: {i} of size {last_tile}"
+        #             start_index = tiles * tile_size
+        #             with XLOAD_context(can_specs=can_specs, sock=sock, data=d, start_index=start_index, tile_size=last_tile) as dto:
+        #                 assert dto.return_code == 0x00, f"DNLOAD failed at last tile: {i} of size {last_tile}"
     except Exception as e:
         print(e)
     
     # keep the last downloaded data for diff mode
     can_specs.last_download_data = xcp_calib.data
 
-# %% ../../nbs/vcantest/ccp.socketcan.ipynb 114
+# %% ../../nbs/vcantest/ccp.socketcan.ipynb 119
 if __name__ == "__main__" and "__file__" in globals():  # only run if this file is called directly
 
     protocol = inquirer.select(
