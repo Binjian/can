@@ -51,7 +51,7 @@ from scapy.all import (
     ls, conf, load_layer, IP, Ether, TCP
 )
 # Ether, TCP, hexdump, raw, rdpcap, load_contrib, conf, load_layer, 
-# CANSocket, CAN, wrpcap, CCP, CRO, CONNECT, GET_SEED, UNLOCK, GET_DAQ_SIZE
+# CANSocket, CAN, wrpcap, CCP, CRO, CONNECT, GET_SEED, UNLOCK, GET_DAQ_SIZE, GET_CCP_VERSION
 
 # %% ../../nbs/vcantest/ccp.scapy.ipynb 13
 load_layer("can")  # CAN
@@ -358,7 +358,7 @@ def flash_xcp(xcp_calib: XCPCalib, data: pd.DataFrame, diff_flashing: bool=False
 
     
 
-# %% ../../nbs/vcantest/ccp.scapy.ipynb 93
+# %% ../../nbs/vcantest/ccp.scapy.ipynb 104
 @contextlib.contextmanager
 def can_context(can_specs: ScapyCANSpecs):
     """Summary
@@ -432,7 +432,7 @@ def can_context(can_specs: ScapyCANSpecs):
         assert dto.return_code == 0x00
         can_specs.cntr += 1
 
-# %% ../../nbs/vcantest/ccp.scapy.ipynb 94
+# %% ../../nbs/vcantest/ccp.scapy.ipynb 105
 @contextlib.contextmanager
 def SET_MTA_context(can_specs: ScapyCANSpecs, sock: CANSocket, data: XCPData) -> CAN:
     """Summary
@@ -461,7 +461,7 @@ def SET_MTA_context(can_specs: ScapyCANSpecs, sock: CANSocket, data: XCPData) ->
     
 
 
-# %% ../../nbs/vcantest/ccp.scapy.ipynb 95
+# %% ../../nbs/vcantest/ccp.scapy.ipynb 106
 @contextlib.contextmanager
 def XLOAD_context(can_specs: ScapyCANSpecs, sock: CANSocket, data: XCPData, start_index: int, tile_size: int):
     """Summary
@@ -503,7 +503,7 @@ def XLOAD_context(can_specs: ScapyCANSpecs, sock: CANSocket, data: XCPData, star
     finally:
         pass  # do nothing, just pray it'll be OK. Crapy CCP!
 
-# %% ../../nbs/vcantest/ccp.scapy.ipynb 97
+# %% ../../nbs/vcantest/ccp.scapy.ipynb 108
 def upload_calib_data2(xcp_calib: XCPCalib, 
                         can_specs: ScapyCANSpecs
                         )->None:
@@ -550,7 +550,7 @@ def upload_calib_data2(xcp_calib: XCPCalib,
     except Exception as e:
         print(e)
 
-# %% ../../nbs/vcantest/ccp.scapy.ipynb 98
+# %% ../../nbs/vcantest/ccp.scapy.ipynb 109
 def downlod_calib_data2(xcp_calib: XCPCalib, 
                         can_specs: ScapyCANSpecs
                         )->None:
@@ -619,7 +619,7 @@ def downlod_calib_data2(xcp_calib: XCPCalib,
     # keep the last downloaded data for diff mode
     can_specs.last_download_data = xcp_calib.data
 
-# %% ../../nbs/vcantest/ccp.scapy.ipynb 109
+# %% ../../nbs/vcantest/ccp.scapy.ipynb 120
 if __name__ == "__main__" and "__file__" in globals():  # only run if this file is called directly
 
     protocol = inquirer.select(
