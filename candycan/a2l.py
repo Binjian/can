@@ -13,14 +13,21 @@ import git
 import ijson
 import json
 import inspect
-from typing import Optional, List  # Union, 
+from typing import Optional, List  # Union,
 from functools import cached_property
 import re
 from enum import Enum
 from pathlib import Path
 from pprint import pprint, pformat, PrettyPrinter
 import argparse
-from pydantic import BaseModel, Field, ConfigDict, model_validator, conlist, ValidationError
+from pydantic import (
+    BaseModel,
+    Field,
+    ConfigDict,
+    model_validator,
+    conlist,
+    ValidationError,
+)
 from pydantic.functional_validators import AfterValidator
 from typing_extensions import Annotated
 import numpy as np
@@ -37,1071 +44,1408 @@ pprint(repo.working_dir)
 # repo.working_dir
 
 # %% ../nbs/01.a2l.ipynb 8
-def list_of_strings(strings: str)->list[str]:
-	""" split a string separated by ',', ';', or '\s' to a list of strings.
-	Descripttion: split a long string to a list of strings.
+def list_of_strings(strings: str) -> list[str]:
+    """split a string separated by ',', ';', or '\s' to a list of strings.
+    Descripttion: split a long string to a list of strings.
 
-	Args:
-		strings (str): The string to split.
+    Args:
+            strings (str): The string to split.
 
-	Returns:
-		list: The list of strings.
-	"""
-	return re.split(r',\s*|;\s*|\s+', strings)	
-
+    Returns:
+            list: The list of strings.
+    """
+    return re.split(r",\s*|;\s*|\s+", strings)
 
 # %% ../nbs/01.a2l.ipynb 11
 class JsonNodePathSegment:
-	"""result of parsing json node path segment
-	
-	Args:
-		name (str): name of the node
-		indices (list[int]): indices of the node
-		index_range (list[int]): index range of the node
+    """result of parsing json node path segment
 
-		if both indices and index_range are None, then the node is a dict, otherwise it is a list
+    Args:
+            name (str): name of the node
+            indices (list[int]): indices of the node
+            index_range (list[int]): index range of the node
 
-	"""
-	def __init__(self, name: str, indices: list[int]=None, index_range: list[int]=None):
-		self.name = name
-		self.indices = indices
-		self.index_range = index_range
-		assert (
-			(indices is None and index_range is None)
-			or (indices is [] and index_range is None)  # empty list is valid for lazy loading
-			or (indices is not None and index_range is None) 
-			or (indices is None and index_range is not None)
-		), 'Invalid JsonNodePathSegment'
+            if both indices and index_range are None, then the node is a dict, otherwise it is a list
 
-	def __repr__(self):
-		if self.indices is None and self.index_range is None:
-			return f'<{self.name} dict>'
-		elif self.indices == []:
-			return f'<{self.name}[] list>'
-		elif self.indices is not None:
-			return f'<{self.name}[{",".join([str(i) for i in self.indices])}] list>'
-		elif len(self.index_range)==2:  #self.index_range is not None:
-			return f'<{self.name}[{self.index_range[0]}:{self.index_range[1]}] list>'
-		elif len(self.index_range)==3:  #self.index_range is not None:
-			return f'<{self.name}[{self.index_range[0]}:{self.index_range[1]}:{self.index_range[2]}] list>'
-		else:
-			raise ValueError(f'Invalid index range {self.index_range}')
+    """
 
-	@property	
-	def is_dict(self):
-		return self.indices is None and self.index_range is None
+    def __init__(
+        self, name: str, indices: list[int] = None, index_range: list[int] = None
+    ):
+        self.name = name
+        self.indices = indices
+        self.index_range = index_range
+        assert (
+            (indices is None and index_range is None)
+            or (
+                indices is [] and index_range is None
+            )  # empty list is valid for lazy loading
+            or (indices is not None and index_range is None)
+            or (indices is None and index_range is not None)
+        ), "Invalid JsonNodePathSegment"
+
+    def __repr__(self):
+        if self.indices is None and self.index_range is None:
+            return f"<{self.name} dict>"
+        elif self.indices == []:
+            return f"<{self.name}[] list>"
+        elif self.indices is not None:
+            return f'<{self.name}[{",".join([str(i) for i in self.indices])}] list>'
+        elif len(self.index_range) == 2:  # self.index_range is not None:
+            return f"<{self.name}[{self.index_range[0]}:{self.index_range[1]}] list>"
+        elif len(self.index_range) == 3:  # self.index_range is not None:
+            return f"<{self.name}[{self.index_range[0]}:{self.index_range[1]}:{self.index_range[2]}] list>"
+        else:
+            raise ValueError(f"Invalid index range {self.index_range}")
+
+    @property
+    def is_dict(self):
+        return self.indices is None and self.index_range is None
 
 # %% ../nbs/01.a2l.ipynb 12
 class JsonNodePath:
-	"""result of parsing json node path
-	
-	Args:
-		segments (list[JsonNodePathSegment]): list of JsonNodePathSegment
+    """result of parsing json node path
 
-	"""
-	def __init__(self, node_path: str):
-		""" Parse the json data to get the node specified by the node path.
-		Descripttion: Parse the json data to get the node specified by the node path.
+    Args:
+            segments (list[JsonNodePathSegment]): list of JsonNodePathSegment
 
-		Args:
-			node_path (str): The node path to the node.
-			json_data (dict): The json data to parse.
+    """
 
-		Returns:
-			dict: The node specified by the node path.
-		"""
-		self.node_path_str = node_path
-		path_segments = re.split(r'/\s*', node_path)[1:]
-		self.node_path_segments = []
-		for s in path_segments:
-			name = re.search(r'(\w+)', s).group(1)
-			# res = re.search('(?:\[(\d+)((?:(,?\s*(\d*))*)|(?:(:?\s*(\d*))*))\])', s)  # regex with \d+ for mandatory digit in [] pair
-			res = re.search('(?:\[(\d*)((?:(,?\s*(\d*))*)|(?:(:?\s*(\d*))*))\])', s)  # regex with \d* for optional empyt [] pair
-			if res:
-				r = res.groups()
-				if r[0]=='' and r[1]=='':
-					# print(f'{name} is a list : index: {r[0]}')
-					self.node_path_segments.append(JsonNodePathSegment(name=name,indices=[]))  # append empty list for lazy finding and loading
-				elif r[0]!='' and r[1]=='':
-					# print(f'{name} is a list : index: {r[0]}')
-					self.node_path_segments.append(JsonNodePathSegment(name=name,indices=[int(r[0])]))
-				elif ',' in r[1]:
-					indices = re.split(r',\s*', r[1])
-					indices[0] = r[0]
-					# print(f'{name} is a list : indices {indices}')
-					self.node_path_segments.append(JsonNodePathSegment(name=name,indices=indices))
-				elif ':' in r[1]:
-					index_range = re.split(r':\s*', r[1])
-					index_range[0] = r[0]
-					# if len(index_range)==2:
-					# 	print(f'{name} is a list : index range [{index_range[0]}:{index_range[1]}]')
-					# elif len(index_range)==3:
-					# 	print(f'{name} is a list : index range [{index_range[0]}:{index_range[1]}:{index_range[2]}]')
-					# else:
-					# 	raise ValueError(f'Invalid index range {index_range}')
-					self.node_path_segments.append(JsonNodePathSegment(name=name,index_range=index_range))
-				else:
-					raise ValueError(f'Invalid index spec in {s}')
-			else:
-				# print(f'{name} is a dict')
-				self.node_path_segments.append(JsonNodePathSegment(name=name))
-	def __repr__(self):
-		return f'<JsonNodePath {self.node_path_segments}>'
+    def __init__(self, node_path: str):
+        """Parse the json data to get the node specified by the node path.
+        Descripttion: Parse the json data to get the node specified by the node path.
 
-	def __iter__(self):
-		return (s for s in self.node_path_segments)	
+        Args:
+                node_path (str): The node path to the node.
+                json_data (dict): The json data to parse.
 
-	@property
-	def leaf(self):
-		"""return the leaf of the node path"""
-		return self.node_path_segments[-1]
+        Returns:
+                dict: The node specified by the node path.
+        """
+        self.node_path_str = node_path
+        path_segments = re.split(r"/\s*", node_path)[1:]
+        self.node_path_segments = []
+        for s in path_segments:
+            name = re.search(r"(\w+)", s).group(1)
+            # res = re.search('(?:\[(\d+)((?:(,?\s*(\d*))*)|(?:(:?\s*(\d*))*))\])', s)  # regex with \d+ for mandatory digit in [] pair
+            res = re.search(
+                "(?:\[(\d*)((?:(,?\s*(\d*))*)|(?:(:?\s*(\d*))*))\])", s
+            )  # regex with \d* for optional empyt [] pair
+            if res:
+                r = res.groups()
+                if r[0] == "" and r[1] == "":
+                    # print(f'{name} is a list : index: {r[0]}')
+                    self.node_path_segments.append(
+                        JsonNodePathSegment(name=name, indices=[])
+                    )  # append empty list for lazy finding and loading
+                elif r[0] != "" and r[1] == "":
+                    # print(f'{name} is a list : index: {r[0]}')
+                    self.node_path_segments.append(
+                        JsonNodePathSegment(name=name, indices=[int(r[0])])
+                    )
+                elif "," in r[1]:
+                    indices = re.split(r",\s*", r[1])
+                    indices[0] = r[0]
+                    # print(f'{name} is a list : indices {indices}')
+                    self.node_path_segments.append(
+                        JsonNodePathSegment(name=name, indices=indices)
+                    )
+                elif ":" in r[1]:
+                    index_range = re.split(r":\s*", r[1])
+                    index_range[0] = r[0]
+                    # if len(index_range)==2:
+                    # 	print(f'{name} is a list : index range [{index_range[0]}:{index_range[1]}]')
+                    # elif len(index_range)==3:
+                    # 	print(f'{name} is a list : index range [{index_range[0]}:{index_range[1]}:{index_range[2]}]')
+                    # else:
+                    # 	raise ValueError(f'Invalid index range {index_range}')
+                    self.node_path_segments.append(
+                        JsonNodePathSegment(name=name, index_range=index_range)
+                    )
+                else:
+                    raise ValueError(f"Invalid index spec in {s}")
+            else:
+                # print(f'{name} is a dict')
+                self.node_path_segments.append(JsonNodePathSegment(name=name))
 
-	@property
-	def lazy_path(self):
-		"""return the lazy path of the node path"""
-		return '.'.join([f'{s.name}' if s.is_dict else f'{s.name}.item' for s in self.node_path_segments])
+    def __repr__(self):
+        return f"<JsonNodePath {self.node_path_segments}>"
+
+    def __iter__(self):
+        return (s for s in self.node_path_segments)
+
+    @property
+    def leaf(self):
+        """return the leaf of the node path"""
+        return self.node_path_segments[-1]
+
+    @property
+    def lazy_path(self):
+        """return the lazy path of the node path"""
+        return ".".join(
+            [
+                f"{s.name}" if s.is_dict else f"{s.name}.item"
+                for s in self.node_path_segments
+            ]
+        )
 
 # %% ../nbs/01.a2l.ipynb 14
-def get_argparser()->argparse.ArgumentParser:
-	""" Get the argument parser for the command line interface.
-	Descripttion: Get the argument parser for the command line interface.
+def get_argparser() -> argparse.ArgumentParser:
+    """Get the argument parser for the command line interface.
+    Descripttion: Get the argument parser for the command line interface.
 
-	Returns:
-		argparse.ArgumentParser: The argument parser for the command line interface.
-	"""
+    Returns:
+            argparse.ArgumentParser: The argument parser for the command line interface.
+    """
 
-	parser = argparse.ArgumentParser(
+    parser = argparse.ArgumentParser(
         "Get the A2L file path and the desired configuration for CCP/XCP.",
     )
 
-	parser.add_argument(
+    parser.add_argument(
         "-p",
         "--path",
         type=str,
-        default=repo.working_dir+r"/res/vbu_sample.json",
+        default=repo.working_dir + r"/res/vbu_sample.json",
         help="path to the A2L file",
     )
 
-	parser.add_argument(
-		"-n",
-		"--node-path",
-		# type=JsonNodePath,
-		type=str,
-		default=r"/PROJECT/MODULE[]",
-		# default=r"/PROJECT/MODULE[]/CHARACTERISTIC[], "
-		# 		r"/PROJECT/MODULE[]/MEASUREMENT[], "
-		# 		r"/PROJECT/MODULE[]/AXIS_PTS[], "
-		# 		r"/PROJECT/MODULE[]/COMPU_METHOD[], ",
-		help="node path to search for calibration parameters",
-	)
+    parser.add_argument(
+        "-n",
+        "--node-path",
+        # type=JsonNodePath,
+        type=str,
+        default=r"/PROJECT/MODULE[]",
+        # default=r"/PROJECT/MODULE[]/CHARACTERISTIC[], "
+        # 		r"/PROJECT/MODULE[]/MEASUREMENT[], "
+        # 		r"/PROJECT/MODULE[]/AXIS_PTS[], "
+        # 		r"/PROJECT/MODULE[]/COMPU_METHOD[], ",
+        help="node path to search for calibration parameters",
+    )
 
-	parser.add_argument(
-		"-l",
-		"--leaves",
-		type=list_of_strings,
-		default=r"TQD_trqTrqSetNormal_MAP_v, " 
-				r"VBU_L045A_CWP_05_09T_AImode_CM_single, " 
-				r"Lookup2D_FLOAT32_IEEE, " 
-				r"Lookup2D_X_FLOAT32_IEEE, " 
-				r"Scalar_FLOAT32_IEEE, " 
-				r"TQD_vVehSpd, "
-				r"TQD_vSgndSpd_MAP_y, "
-				r"TQD_pctAccPedPosFlt, "
-				r"TQD_pctAccPdl_MAP_x",
-			help="leaf nodes to search for",
-	)
+    parser.add_argument(
+        "-l",
+        "--leaves",
+        type=list_of_strings,
+        default=r"TQD_trqTrqSetNormal_MAP_v, "
+        r"VBU_L045A_CWP_05_09T_AImode_CM_single, "
+        r"Lookup2D_FLOAT32_IEEE, "
+        r"Lookup2D_X_FLOAT32_IEEE, "
+        r"Scalar_FLOAT32_IEEE, "
+        r"TQD_vVehSpd, "
+        r"TQD_vSgndSpd_MAP_y, "
+        r"TQD_pctAccPedPosFlt, "
+        r"TQD_pctAccPdl_MAP_x",
+        help="leaf nodes to search for",
+    )
 
-	return parser
+    return parser
 
 # %% ../nbs/01.a2l.ipynb 15
 parser = get_argparser()
 args = parser.parse_args(
-	[
-		"-p",
-		# r"../res/VBU_AI.json",
-		repo.working_dir+r"/res/vbu_sample.json",
-		"-n",
-		r"/PROJECT/MODULE[], ",
-		# r"/PROJECT/MODULE[]/CHARACTERISTIC[], "
-		# 	r"/PROJECT/MODULE[]/MEASUREMENT[], "
-		# 	r"/PROJECT/MODULE[]/AXIS_PTS[], "
-		# 	r"/PROJECT/MODULE[]/COMPU_METHOD[]",
-		"-l",
-		r"TQD_trqTrqSetNormal_MAP_v, " 
-				r"VBU_L045A_CWP_05_09T_AImode_CM_single, " 
-				r"Lookup2D_FLOAT32_IEEE, " 
-				r"Lookup2D_X_FLOAT32_IEEE, " 
-				r"Scalar_FLOAT32_IEEE, " 
-				r"TQD_vVehSpd, "
-				r"TQD_vSgndSpd_MAP_y, "
-				r"TQD_pctAccPedPosFlt, "
-				r"TQD_pctAccPdl_MAP_x",
-	]
+    [
+        "-p",
+        # r"../res/VBU_AI.json",
+        repo.working_dir + r"/res/vbu_sample.json",
+        "-n",
+        r"/PROJECT/MODULE[], ",
+        # r"/PROJECT/MODULE[]/CHARACTERISTIC[], "
+        # 	r"/PROJECT/MODULE[]/MEASUREMENT[], "
+        # 	r"/PROJECT/MODULE[]/AXIS_PTS[], "
+        # 	r"/PROJECT/MODULE[]/COMPU_METHOD[]",
+        "-l",
+        r"TQD_trqTrqSetNormal_MAP_v, "
+        r"VBU_L045A_CWP_05_09T_AImode_CM_single, "
+        r"Lookup2D_FLOAT32_IEEE, "
+        r"Lookup2D_X_FLOAT32_IEEE, "
+        r"Scalar_FLOAT32_IEEE, "
+        r"TQD_vVehSpd, "
+        r"TQD_vSgndSpd_MAP_y, "
+        r"TQD_pctAccPedPosFlt, "
+        r"TQD_pctAccPdl_MAP_x",
+    ]
 )
 args.__dict__
 
 # %% ../nbs/01.a2l.ipynb 26
 class Bunch(object):
-	"""collector of a bunch of named stuff into one object; a generic record/struct type, indexed by keys"""
-	bunch_registry = {} 
-	def __init__(self, key, **kwargs):
-		"""Bunch object self contains no 'key' attribute, but adict could have."""
-		self.key = key
-		self.__dict__.update(kwargs)
-		self.__class__.bunch_registry.update({key: self})
-	
-	def __repr__(self):
-		return f'<{self.__class__.__name__}.{self.key}>'
-	
-	def __hash__(self) -> int:
-		return hash(tuple(sorted(self.__dict__.items())))
-	
-	def __eq__(self, other) -> bool: 
-		return self.__dict__ == other.__dict__
-	
-	@staticmethod
-	def fetch(key):
-		return Bunch.__index[key]
-	
-	# @classmethod
-	# def register(cls, key: str, value: bunch):
-	# 	"""manual registration of a bunch object with a key
-		
-	# 	args:
-	# 		key: jnode_path string
-	# 		value: bunch object
-			
-	# 	"""
-	# 	cls.bunch_registry.update({key: value})
-	
+    """collector of a bunch of named stuff into one object; a generic record/struct type, indexed by keys"""
+
+    bunch_registry = {}
+
+    def __init__(self, key, **kwargs):
+        """Bunch object self contains no 'key' attribute, but adict could have."""
+        self.key = key
+        self.__dict__.update(kwargs)
+        self.__class__.bunch_registry.update({key: self})
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__}.{self.key}>"
+
+    def __hash__(self) -> int:
+        return hash(tuple(sorted(self.__dict__.items())))
+
+    def __eq__(self, other) -> bool:
+        return self.__dict__ == other.__dict__
+
+    @staticmethod
+    def fetch(key):
+        return Bunch.__index[key]
+
+    # @classmethod
+    # def register(cls, key: str, value: bunch):
+    # 	"""manual registration of a bunch object with a key
+
+    # 	args:
+    # 		key: jnode_path string
+    # 		value: bunch object
+
+    # 	"""
+    # 	cls.bunch_registry.update({key: value})
 
 # %% ../nbs/01.a2l.ipynb 27
 class Record:
-	"""object with dynamic attributes"""
-	record_registry = None
-	__RecordCats = None
-	__cat = None 
-	subclass_registry = {}
+    """object with dynamic attributes"""
 
-	def __init__(self, **kwargs):
-		self.__dict__.update(kwargs)
+    record_registry = None
+    __RecordCats = None
+    __cat = None
+    subclass_registry = {}
 
-	def __repr__(self):
-		return f'<{self.__class__.__name__}: {self.Name!r}>'
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
 
-	@staticmethod
-	def fetch(key: str):
-		try:
-			rec = Record.record_registry[key]
-		except KeyError:
-			rec = key.split('.')[-1]
+    def __repr__(self):
+        return f"<{self.__class__.__name__}: {self.Name!r}>"
 
-		return rec 
-	
-	@classmethod
-	def load_types(cls, path: Path, jnode_path: Optional[JsonNodePath] = JsonNodePath('/PROJECT/MODULE[]')) -> None:
-		"""
-		Load types for the Record class.
+    @staticmethod
+    def fetch(key: str):
+        try:
+            rec = Record.record_registry[key]
+        except KeyError:
+            rec = key.split(".")[-1]
 
-		Args:
-			path (Path): The path to the file.
-			jnode_path (Optional[JsonNodePath], optional): The JSON node path. Defaults to JsonNodePath('/PROJECT/MODULE[]').
-		"""
-		cls.__RecordCats = load_class_type_a2l_lazy(path, jnode_path)
+        return rec
 
-	@classmethod
-	def load_records(cls, path: Path, keys: list[str], jnode_path: Optional[JsonNodePath] = JsonNodePath('/PROJECT/MODULE[]')) -> None:
-		"""
-		Load records for the Record class.
+    @classmethod
+    def load_types(
+        cls,
+        path: Path,
+        jnode_path: Optional[JsonNodePath] = JsonNodePath("/PROJECT/MODULE[]"),
+    ) -> None:
+        """
+        Load types for the Record class.
 
-		Args:
-			path (Path): The path to the file.
-			keys (list[str]): The list of keys.
-			jnode_path (Optional[JsonNodePath], optional): The JSON node path. Defaults to JsonNodePath('/PROJECT/MODULE[]').
-		"""
-		cls.load_types(path, jnode_path)
-		cls.record_registry = load_records_lazy(path, keys, jnode_path)
+        Args:
+                path (Path): The path to the file.
+                jnode_path (Optional[JsonNodePath], optional): The JSON node path. Defaults to JsonNodePath('/PROJECT/MODULE[]').
+        """
+        cls.__RecordCats = load_class_type_a2l_lazy(path, jnode_path)
+
+    @classmethod
+    def load_records(
+        cls,
+        path: Path,
+        keys: list[str],
+        jnode_path: Optional[JsonNodePath] = JsonNodePath("/PROJECT/MODULE[]"),
+    ) -> None:
+        """
+        Load records for the Record class.
+
+        Args:
+                path (Path): The path to the file.
+                keys (list[str]): The list of keys.
+                jnode_path (Optional[JsonNodePath], optional): The JSON node path. Defaults to JsonNodePath('/PROJECT/MODULE[]').
+        """
+        cls.load_types(path, jnode_path)
+        cls.record_registry = load_records_lazy(path, keys, jnode_path)
 
 # %% ../nbs/01.a2l.ipynb 28
 class Calibration(Record):
-	"""Target calibration object for torque map; a2l section ["PROJECT"]["MODULE"]["CHARACTERISTIC"]
-	
-	First level keys will be turned into attributes of the object, encoded registered values will be replaced with the corresponding objects.
-	Otherwiese the key-value pairs will be kept as is. 
-	""" 
-	__cat = 'CHARACTERISTIC'
-	Record.subclass_registry[__cat] = 'Calibration'
+    """Target calibration object for torque map; a2l section ["PROJECT"]["MODULE"]["CHARACTERISTIC"]
 
-	def __init__(self, **kwargs):
-		# update the dict with the kwargs
-		super().__init__(**kwargs)
-		# TODO (optionally) add check for the class existence of the keys with ijson parser event handler
+    First level keys will be turned into attributes of the object, encoded registered values will be replaced with the corresponding objects.
+    Otherwiese the key-value pairs will be kept as is.
+    """
 
+    __cat = "CHARACTERISTIC"
+    Record.subclass_registry[__cat] = "Calibration"
 
-	def __repr__(self):
-		try:
-			return f'<{self.__class__.__name__}: {self.Name!r}>'
-		except AttributeError:
-			return super().__repr__() 
+    def __init__(self, **kwargs):
+        # update the dict with the kwargs
+        super().__init__(**kwargs)
+        # TODO (optionally) add check for the class existence of the keys with ijson parser event handler
 
-	@cached_property
-	def data_conversion(self):
-		try:
-			key = self.__dict__['Conversion']['Value']  # define the key for the axis for future fetch
-		except KeyError:
-			raise KeyError('The key "Conversion" is not found in the calibration description or '
-						'the key "Value" is not found in the "Conversion" dict.')
-		cat = 'COMPU_METHOD'
-		key = f"{super().subclass_registry[cat]}.{key}"  # define the key for the axis for future fetch
-		return self.__class__.fetch(key)
+    def __repr__(self):
+        try:
+            return f"<{self.__class__.__name__}: {self.Name!r}>"
+        except AttributeError:
+            return super().__repr__()
 
-	@cached_property
-	def record_type(self):
-		try:
-			key = self.__dict__['Deposit']['Value']  # define the key for the axis for future fetch
-		except KeyError:
-			raise KeyError('The key "Deposit" is not found in the calibration description or '
-						'the key "Value" is not found in the "Deposit" dict.')
-		cat = 'RECORD_LAYOUT'
-		key = f"{super().subclass_registry[cat]}.{key}"  # define the key for the axis for future fetch
-		rtype = self.__class__.fetch(key)
-		if type(rtype) is str:  # if the key is not found in the registry, then it is a scalar
-			key = f"{super().subclass_registry[cat]}.{'Scalar_' + rtype}"  # construct the new key for the scalar as defined in a2l
-			rtype = self.__class__.fetch(key)
-		
-		return rtype
+    @cached_property
+    def data_conversion(self):
+        try:
+            key = self.__dict__["Conversion"][
+                "Value"
+            ]  # define the key for the axis for future fetch
+        except KeyError:
+            raise KeyError(
+                'The key "Conversion" is not found in the calibration description or '
+                'the key "Value" is not found in the "Conversion" dict.'
+            )
+        cat = "COMPU_METHOD"
+        key = f"{super().subclass_registry[cat]}.{key}"  # define the key for the axis for future fetch
+        return self.__class__.fetch(key)
 
-	@cached_property
-	def address(self):
-		return hex(int(self.__dict__['Address']['Value']))[2:]   # transform Ecu address to hex string without '0x'
+    @cached_property
+    def record_type(self):
+        try:
+            key = self.__dict__["Deposit"][
+                "Value"
+            ]  # define the key for the axis for future fetch
+        except KeyError:
+            raise KeyError(
+                'The key "Deposit" is not found in the calibration description or '
+                'the key "Value" is not found in the "Deposit" dict.'
+            )
+        cat = "RECORD_LAYOUT"
+        key = f"{super().subclass_registry[cat]}.{key}"  # define the key for the axis for future fetch
+        rtype = self.__class__.fetch(key)
+        if (
+            type(rtype) is str
+        ):  # if the key is not found in the registry, then it is a scalar
+            key = f"{super().subclass_registry[cat]}.{'Scalar_' + rtype}"  # construct the new key for the scalar as defined in a2l
+            rtype = self.__class__.fetch(key)
 
-	@cached_property
-	def axes(self):  # y axis
-		"""_summary_
+        return rtype
 
-			for axes[0/1]['InputQuantity']['Value] == 'TQD_vVehSpd' or 'TQD_pctAccPedPosFlt':
-		Raises:
-			ValueError: _description_
-			KeyError: _description_
-			KeyError: _description_
-			KeyError: _description_
+    @cached_property
+    def address(self):
+        return hex(int(self.__dict__["Address"]["Value"]))[
+            2:
+        ]  # transform Ecu address to hex string without '0x'
 
-		Returns:
-			_type_: _description_
-		"""
-		try:
-			axes = []
-			for axis in self.__dict__['AXIS_DESCR']: # 'AXIS_DESCR' is a list of dicts 2 axes for 2D map 
-				try:
-					if axis['Attribute'] != 'COM_AXIS':
-						raise ValueError(f'The value of "Attribute" {axis["Attribute"]} is not "COM_AXIS".')
-				except KeyError:
-					raise KeyError('The key "Attribute" is not found in the axis description.')
-				try:
-					key = axis['InputQuantity']['Value']  # define the key for the axis for future fetch
-				except KeyError:
-					raise KeyError('The key "InputQuantity" is not found in the axis description or '
-								'the key "Value" is not found in the "InputQuantity" dict.')
-				# get the MEASUREMENT object from the registry				
-				cat = 'MEASUREMENT'
-				key = f"{super().subclass_registry[cat]}.{key}"
-				axis['measurement'] = self.__class__.fetch(key) # replace value with the object
+    @cached_property
+    def axes(self):  # y axis
+        """_summary_
 
-				try:
-					key = axis['AXIS_PTS_REF']['AxisPoints']['Value']  # define the key for the axis for future fetch
-				except KeyError:
-					raise KeyError('The key "AXIS_PTS_REF " is not found in the axis description or '
-								'the key "AxisPoins" is not found in the "AXIS_PTS_REF" dict.'
-								'the key "Value" is not found in the "AxisPoints" dict.')
-				# get the AXIS_PTS object from the registry				
-				cat = 'AXIS_PTS'
-				key = f"{super().subclass_registry[cat]}.{key}"
-				axis['axis_scale']= self.__class__.fetch(key)  # replace value with object 
+                for axes[0/1]['InputQuantity']['Value] == 'TQD_vVehSpd' or 'TQD_pctAccPedPosFlt':
+        Raises:
+                ValueError: _description_
+                KeyError: _description_
+                KeyError: _description_
+                KeyError: _description_
 
-				try:
-					key = axis['Conversion']['Value']  # define the key for the axis for future fetch
-				except KeyError:
-					raise KeyError('The key "Conversion" is not found in the axis description or '
-								'the key "Value" is not found in the "Conversion" dict.')
-				# get the AXIS_PTS object from the registry				
-				cat = 'COMPU_METHOD'
-				key = f"{super().subclass_registry[cat]}.{key}"
-				axis['data_conversion'] = self.__class__.fetch(key)  # replace value with object
+        Returns:
+                _type_: _description_
+        """
+        try:
+            axes = []
+            for axis in self.__dict__[
+                "AXIS_DESCR"
+            ]:  # 'AXIS_DESCR' is a list of dicts 2 axes for 2D map
+                try:
+                    if axis["Attribute"] != "COM_AXIS":
+                        raise ValueError(
+                            f'The value of "Attribute" {axis["Attribute"]} is not "COM_AXIS".'
+                        )
+                except KeyError:
+                    raise KeyError(
+                        'The key "Attribute" is not found in the axis description.'
+                    )
+                try:
+                    key = axis["InputQuantity"][
+                        "Value"
+                    ]  # define the key for the axis for future fetch
+                except KeyError:
+                    raise KeyError(
+                        'The key "InputQuantity" is not found in the axis description or '
+                        'the key "Value" is not found in the "InputQuantity" dict.'
+                    )
+                # get the MEASUREMENT object from the registry
+                cat = "MEASUREMENT"
+                key = f"{super().subclass_registry[cat]}.{key}"
+                axis["measurement"] = self.__class__.fetch(
+                    key
+                )  # replace value with the object
 
-				bunch_register_key = f'{self.__class__.__name__}.{self.Name}.{axis["InputQuantity"]["Value"]}' 
-				bunch = Bunch(bunch_register_key,**axis)
-				axes.append(bunch)
-				# Bunch.register(bunch_register_key,bunch)
-			
-			return axes
-		except KeyError:
-			raise KeyError('The key "AXIS_DESCR" is not found in the calibration object.')
+                try:
+                    key = axis["AXIS_PTS_REF"]["AxisPoints"][
+                        "Value"
+                    ]  # define the key for the axis for future fetch
+                except KeyError:
+                    raise KeyError(
+                        'The key "AXIS_PTS_REF " is not found in the axis description or '
+                        'the key "AxisPoins" is not found in the "AXIS_PTS_REF" dict.'
+                        'the key "Value" is not found in the "AxisPoints" dict.'
+                    )
+                # get the AXIS_PTS object from the registry
+                cat = "AXIS_PTS"
+                key = f"{super().subclass_registry[cat]}.{key}"
+                axis["axis_scale"] = self.__class__.fetch(
+                    key
+                )  # replace value with object
+
+                try:
+                    key = axis["Conversion"][
+                        "Value"
+                    ]  # define the key for the axis for future fetch
+                except KeyError:
+                    raise KeyError(
+                        'The key "Conversion" is not found in the axis description or '
+                        'the key "Value" is not found in the "Conversion" dict.'
+                    )
+                # get the AXIS_PTS object from the registry
+                cat = "COMPU_METHOD"
+                key = f"{super().subclass_registry[cat]}.{key}"
+                axis["data_conversion"] = self.__class__.fetch(
+                    key
+                )  # replace value with object
+
+                bunch_register_key = f'{self.__class__.__name__}.{self.Name}.{axis["InputQuantity"]["Value"]}'
+                bunch = Bunch(bunch_register_key, **axis)
+                axes.append(bunch)
+                # Bunch.register(bunch_register_key,bunch)
+
+            return axes
+        except KeyError:
+            raise KeyError(
+                'The key "AXIS_DESCR" is not found in the calibration object.'
+            )
 
 # %% ../nbs/01.a2l.ipynb 29
 class Measurement(Record):
-	"""Measurement object like speed,  acc pedal position, etc; a2l section ["PROJECT"]["MODULE"]["MEAUREMENT"]]""" 
-	__CAT = 'MEASUREMENT'
-	Record.subclass_registry[__CAT] = 'Measurement'
+    """Measurement object like speed,  acc pedal position, etc; a2l section ["PROJECT"]["MODULE"]["MEAUREMENT"]]"""
 
-	def __repr__(self):
-		try:
-			return f'<{self.__class__.__name__}: {self.Name!r}>'
-		except AttributeError:
-			return super().__repr__() 
-	
-	@cached_property
-	def data_conversion(self):
-		try:
-			key = self.__dict__['Conversion']['Value']  # define the key for the axis for future fetch
-		except KeyError:
-			raise KeyError('The key "Conversion" is not found in the calibration description or '
-						'the key "Value" is not found in the "Conversion" dict.')
-		cat = 'COMPU_METHOD'
-		key = f"{super().subclass_registry[cat]}.{key}"
-		return self.__class__.fetch(key)
+    __CAT = "MEASUREMENT"
+    Record.subclass_registry[__CAT] = "Measurement"
 
-	@cached_property
-	def record_type(self):
-		try:
-			key = self.__dict__['DataType']['Value']  # define the key for the axis for future fetch
-		except KeyError:
-			raise KeyError('The key "Deposit" is not found in the calibration description or '
-						'the key "Value" is not found in the "Deposit" dict.')
-		cat = 'RECORD_LAYOUT'
-		key = f"{super().subclass_registry[cat]}.{key}"  # define the key for the axis for future fetch
-		# print(key)
-		rtype = self.__class__.fetch(key)
-		if type(rtype) is str:  # if the key is not found in the registry, then it is a scalar
-			key = f"{super().subclass_registry[cat]}.{'Scalar_' + rtype}"  # construct the new key for the scalar as defined in a2l
-			rtype = self.__class__.fetch(key)
-		
-		return rtype
+    def __repr__(self):
+        try:
+            return f"<{self.__class__.__name__}: {self.Name!r}>"
+        except AttributeError:
+            return super().__repr__()
 
-	@cached_property
-	def address(self):
-		return hex(int(self.__dict__['ECU_ADDRESS']['Address']['Value']))[2:]   # transform Ecu address to hex string without '0x'
+    @cached_property
+    def data_conversion(self):
+        try:
+            key = self.__dict__["Conversion"][
+                "Value"
+            ]  # define the key for the axis for future fetch
+        except KeyError:
+            raise KeyError(
+                'The key "Conversion" is not found in the calibration description or '
+                'the key "Value" is not found in the "Conversion" dict.'
+            )
+        cat = "COMPU_METHOD"
+        key = f"{super().subclass_registry[cat]}.{key}"
+        return self.__class__.fetch(key)
+
+    @cached_property
+    def record_type(self):
+        try:
+            key = self.__dict__["DataType"][
+                "Value"
+            ]  # define the key for the axis for future fetch
+        except KeyError:
+            raise KeyError(
+                'The key "Deposit" is not found in the calibration description or '
+                'the key "Value" is not found in the "Deposit" dict.'
+            )
+        cat = "RECORD_LAYOUT"
+        key = f"{super().subclass_registry[cat]}.{key}"  # define the key for the axis for future fetch
+        # print(key)
+        rtype = self.__class__.fetch(key)
+        if (
+            type(rtype) is str
+        ):  # if the key is not found in the registry, then it is a scalar
+            key = f"{super().subclass_registry[cat]}.{'Scalar_' + rtype}"  # construct the new key for the scalar as defined in a2l
+            rtype = self.__class__.fetch(key)
+
+        return rtype
+
+    @cached_property
+    def address(self):
+        return hex(int(self.__dict__["ECU_ADDRESS"]["Address"]["Value"]))[
+            2:
+        ]  # transform Ecu address to hex string without '0x'
 
 # %% ../nbs/01.a2l.ipynb 30
 class AxisScale(Record):
-	"""Target calibration object for torque map; a2l section ["PROJECT"]["MODULE"]["AXIS_PTS"]""" 
-	__CAT = 'AXIS_PTS'
-	Record.subclass_registry[__CAT] = 'AxisScale'
+    """Target calibration object for torque map; a2l section ["PROJECT"]["MODULE"]["AXIS_PTS"]"""
 
-	def __repr__(self):
-		try:
-			return f'<{self.__class__.__name__}: {self.Name!r}>'
-		except AttributeError:
-			return super().__repr__() 
-	
-	@cached_property
-	def data_conversion(self):
-		try:
-			key = self.__dict__['Conversion']['Value']  # define the key for the axis for future fetch
-		except KeyError:
-			raise KeyError('The key "Conversion" is not found in the calibration description or '
-						'the key "Value" is not found in the "Conversion" dict.')
-		cat = 'COMPU_METHOD'
-		key = f"{super().subclass_registry[cat]}.{key}"
-		return self.__class__.fetch(key)
-	
-	@cached_property
-	def record_type(self):
-		try:
-			key = self.__dict__['DepositR']['Value']  # define the key for the axis for future fetch
-		except KeyError:
-			raise KeyError('The key "DepositR" is not found in the calibration description or '
-						'the key "Value" is not found in the "DepositR" dict.')
-		cat = 'RECORD_LAYOUT'
-		key = f"{super().subclass_registry[cat]}.{key}"  # define the key for the axis for future fetch
-		rtype = self.__class__.fetch(key)
-		if type(rtype) is str:  # if the key is not found in the registry, then it is a scalar
-			key = f"{super().subclass_registry[cat]}.{'Scalar_' + rtype}"  # construct the new key for the scalar as defined in a2l
-			rtype = self.__class__.fetch(key)
-		# if type(rtype) is str:  # if the key is not found in the registry, then it is a scalar
-		# 	key = 'Scalar_' + rtype  # construct the new key for the scalar as defined in a2l
-		# 	cat = 'RECORD_LAYOUT'
-		# 	rtype = self.__class__.fetch(key)
-		
-		return rtype
+    __CAT = "AXIS_PTS"
+    Record.subclass_registry[__CAT] = "AxisScale"
 
-	@cached_property
-	def address(self):
-		return hex(int(self.__dict__['Address']['Value']))[2:]   # transform Ecu address to hex string without '0x'
+    def __repr__(self):
+        try:
+            return f"<{self.__class__.__name__}: {self.Name!r}>"
+        except AttributeError:
+            return super().__repr__()
 
-	@cached_property
-	def input(self):
-		try:
-			key = self.__dict__['InputQuantity']['Value']  # define the key for the axis for future fetch
-		except KeyError:
-			raise KeyError('The key "Conversion" is not found in the calibration description or '
-						'the key "Value" is not found in the "Conversion" dict.')
-		cat = 'MEASUREMENT'
-		key = f"{super().subclass_registry[cat]}.{key}"
-		return self.__class__.fetch(key)
+    @cached_property
+    def data_conversion(self):
+        try:
+            key = self.__dict__["Conversion"][
+                "Value"
+            ]  # define the key for the axis for future fetch
+        except KeyError:
+            raise KeyError(
+                'The key "Conversion" is not found in the calibration description or '
+                'the key "Value" is not found in the "Conversion" dict.'
+            )
+        cat = "COMPU_METHOD"
+        key = f"{super().subclass_registry[cat]}.{key}"
+        return self.__class__.fetch(key)
+
+    @cached_property
+    def record_type(self):
+        try:
+            key = self.__dict__["DepositR"][
+                "Value"
+            ]  # define the key for the axis for future fetch
+        except KeyError:
+            raise KeyError(
+                'The key "DepositR" is not found in the calibration description or '
+                'the key "Value" is not found in the "DepositR" dict.'
+            )
+        cat = "RECORD_LAYOUT"
+        key = f"{super().subclass_registry[cat]}.{key}"  # define the key for the axis for future fetch
+        rtype = self.__class__.fetch(key)
+        if (
+            type(rtype) is str
+        ):  # if the key is not found in the registry, then it is a scalar
+            key = f"{super().subclass_registry[cat]}.{'Scalar_' + rtype}"  # construct the new key for the scalar as defined in a2l
+            rtype = self.__class__.fetch(key)
+        # if type(rtype) is str:  # if the key is not found in the registry, then it is a scalar
+        # 	key = 'Scalar_' + rtype  # construct the new key for the scalar as defined in a2l
+        # 	cat = 'RECORD_LAYOUT'
+        # 	rtype = self.__class__.fetch(key)
+
+        return rtype
+
+    @cached_property
+    def address(self):
+        return hex(int(self.__dict__["Address"]["Value"]))[
+            2:
+        ]  # transform Ecu address to hex string without '0x'
+
+    @cached_property
+    def input(self):
+        try:
+            key = self.__dict__["InputQuantity"][
+                "Value"
+            ]  # define the key for the axis for future fetch
+        except KeyError:
+            raise KeyError(
+                'The key "Conversion" is not found in the calibration description or '
+                'the key "Value" is not found in the "Conversion" dict.'
+            )
+        cat = "MEASUREMENT"
+        key = f"{super().subclass_registry[cat]}.{key}"
+        return self.__class__.fetch(key)
 
 # %% ../nbs/01.a2l.ipynb 31
 class DataConversion(Record):
-	"""Data conversion object for calibration; a2l section ["PROJECT"]["MODULE"]["COMPU_METHOD"]]""" 
-	__CAT = 'COMPU_METHOD'
-	Record.subclass_registry[__CAT] = 'DataConversion'
+    """Data conversion object for calibration; a2l section ["PROJECT"]["MODULE"]["COMPU_METHOD"]]"""
 
-	def __repr__(self):
-		try:
-			return f'<{self.__class__.__name__}: {self.Name!r}>'
-		except AttributeError:
-			return super().__repr__() 
+    __CAT = "COMPU_METHOD"
+    Record.subclass_registry[__CAT] = "DataConversion"
+
+    def __repr__(self):
+        try:
+            return f"<{self.__class__.__name__}: {self.Name!r}>"
+        except AttributeError:
+            return super().__repr__()
 
 # %% ../nbs/01.a2l.ipynb 32
 class DataLayout(Record):
-	"""Data type object for calibration; a2l section ["PROJECT"]["MODULE"]["RECORD_LAYOUT"]""" 
-	__CAT = 'RECORD_LAYOUT'
-	Record.subclass_registry[__CAT] = 'DataLayout'
-	# size: int=Field(default=4, description='size of the data in bytes')
+    """Data type object for calibration; a2l section ["PROJECT"]["MODULE"]["RECORD_LAYOUT"]"""
 
-	def __repr__(self):
-		try:
-			return f'<{self.__class__.__name__}: {self.Name!r}>'
-		except AttributeError:
-			return super().__repr__() 
-	
+    __CAT = "RECORD_LAYOUT"
+    Record.subclass_registry[__CAT] = "DataLayout"
+    # size: int=Field(default=4, description='size of the data in bytes')
 
-	@property
-	def data_type(self):
-		try:
-			dtype = self.__dict__['FNC_VALUES']['DataType']['Value']  # define the key for the axis for future fetch
-		except KeyError:
-			try:
-				dtype = self.__dict__['AXIS_PTS_X']['DataType']['Value']  # define the key for the axis for future fetch
-			except KeyError:
-				raise KeyError('The key "DataType" is not found in the RECORD_LAYOUT "FNC_VALUES" or "AXIS_PTS_X" section'
-							'or the key "Value" is not found in the "DataType" dict.')
-		return dtype
+    def __repr__(self):
+        try:
+            return f"<{self.__class__.__name__}: {self.Name!r}>"
+        except AttributeError:
+            return super().__repr__()
 
-	@cached_property
-	def type_size(self):
-		match(self.data_type):
-			case 'UBYTE' | 'SBYTE' | 'CHAR':
-				return 1
-			case 'UWORD' | 'SWORD':
-				return 2
-			case 'ULONG' | 'SLONG' | 'FLOAT32_IEEE':
-				return 4
-			case 'UINT64' | 'INT64' | 'FLOAT64_IEEE':
-				return 8
-			case _:
-				raise ValueError(f'Invalid data type {self.data_type}')
+    @property
+    def data_type(self):
+        try:
+            dtype = self.__dict__["FNC_VALUES"]["DataType"][
+                "Value"
+            ]  # define the key for the axis for future fetch
+        except KeyError:
+            try:
+                dtype = self.__dict__["AXIS_PTS_X"]["DataType"][
+                    "Value"
+                ]  # define the key for the axis for future fetch
+            except KeyError:
+                raise KeyError(
+                    'The key "DataType" is not found in the RECORD_LAYOUT "FNC_VALUES" or "AXIS_PTS_X" section'
+                    'or the key "Value" is not found in the "DataType" dict.'
+                )
+        return dtype
+
+    @cached_property
+    def type_size(self):
+        match (self.data_type):
+            case "UBYTE" | "SBYTE" | "CHAR":
+                return 1
+            case "UWORD" | "SWORD":
+                return 2
+            case "ULONG" | "SLONG" | "FLOAT32_IEEE":
+                return 4
+            case "UINT64" | "INT64" | "FLOAT64_IEEE":
+                return 8
+            case _:
+                raise ValueError(f"Invalid data type {self.data_type}")
 
 # %% ../nbs/01.a2l.ipynb 34
-def load_class_type_a2l_lazy(path: Path, jnode_path: Optional[JsonNodePath]=JsonNodePath('/PROJECT/MODULE[]'))->type(Enum):  # return a class type
-	""" Search for the calibration key in the A2L file.
-	Descripttion: Load the A2L file as a dictionary.
-	
-	Create record type (enum class) for the calibration parameter for the given a2l json file
+def load_class_type_a2l_lazy(
+    path: Path, jnode_path: Optional[JsonNodePath] = JsonNodePath("/PROJECT/MODULE[]")
+) -> type(Enum):  # return a class type
+    """Search for the calibration key in the A2L file.
+    Descripttion: Load the A2L file as a dictionary.
 
-	Args:
-		path (str): The path to the A2L file.
-		section_key (str): The section key to search for the calibration type.
+    Create record type (enum class) for the calibration parameter for the given a2l json file
 
-	Returns:
-		dict: The A2L file as a dictionary.
-	"""
-	record_type_keys = []
-	with open(path, "r") as f:
-		for object in ijson.items(f, jnode_path.lazy_path):
-			# print(list(object.keys()))
-			record_type_keys += object.keys()
-		# keys = [k for k, v in ijson.kvitems(f, prefix) if type(v) is list]t]
-		# record_type_key.append(keys)
+    Args:
+            path (str): The path to the A2L file.
+            section_key (str): The section key to search for the calibration type.
 
-	RecordTypes = Enum('RecordType', record_type_keys)
-	return RecordTypes
+    Returns:
+            dict: The A2L file as a dictionary.
+    """
+    record_type_keys = []
+    with open(path, "r") as f:
+        for object in ijson.items(f, jnode_path.lazy_path):
+            # print(list(object.keys()))
+            record_type_keys += object.keys()
+        # keys = [k for k, v in ijson.kvitems(f, prefix) if type(v) is list]t]
+        # record_type_key.append(keys)
+
+    RecordTypes = Enum("RecordType", record_type_keys)
+    return RecordTypes
 
 # %% ../nbs/01.a2l.ipynb 35
 RecordTypes = load_class_type_a2l_lazy(args.path)
 
 # %% ../nbs/01.a2l.ipynb 38
-def load_records_lazy(path: Path, leaves: list[str], jnode_path: Optional[JsonNodePath]=JsonNodePath('/PROJECT/MODULE[]'))->dict[Record]:
-	"""load records from a json file lazily
+def load_records_lazy(
+    path: Path,
+    leaves: list[str],
+    jnode_path: Optional[JsonNodePath] = JsonNodePath("/PROJECT/MODULE[]"),
+) -> dict[Record]:
+    """load records from a json file lazily
 
-	Args:
-		path (Path): path to the json file
-		# use ijson no need for  jnode_paths, though sacrificing a little bit efficiency (list[JsonNodePath]): list of JsonNodePath to the leaves
-		leaves (list[str]): list of leaf indices to the records, needs to be unique and in the first item of the a2l json file
+    Args:
+            path (Path): path to the json file
+            # use ijson no need for  jnode_paths, though sacrificing a little bit efficiency (list[JsonNodePath]): list of JsonNodePath to the leaves
+            leaves (list[str]): list of leaf indices to the records, needs to be unique and in the first item of the a2l json file
 
-	Returns:
-		dict[str, Record]: dict of Records and its subclasses, indexed by the leaf indices
-	"""
-	registry = {}
-	Record.load_types(path, jnode_path= jnode_path)  # init subclass_registry in  Record
-	prefix = '' 
-	event = ''
-	leaf = ''
-	map_array_levels = []
-	leaves = list(leaves)  # make a shallow copy, so that no new leaves will be added, only referencs to leaves will be removed 
-	# Find the record
-	with open(path, "r") as f:
-		
-		parse_events = ijson.parse(f)
-		while leaves:
-			while True:
-				try:
-					prefix, event, value = next(parse_events)
-					# print(f'prefix: {prefix}, event: {event}, value: {value}')
-					match(event):
-						case 'start_map':
-							map_array_levels.append('m')
-						case 'end_map':
-							m = map_array_levels.pop()
-							assert m == 'm', f'Invalid map level {m}'
-						case 'start_array':
-							map_array_levels.append('a')
-						case 'end_array':
-							a = map_array_levels.pop() 
-							assert a == 'a', f'Invalid array level {a}'
-						case 'map_key':
-							pass
-						case 'string':
-							if value in leaves \
-								and prefix.split('.')[-2] == 'Name' \
-								and ''.join(map_array_levels) == 'mmamamm':
-								# and map_level==4 \
-								# and array_level==1:  # find the leaf with the key "Name", is the index of  an a2l record
-								# print(f'prefix: {prefix}, event: {event}, value: {value}, map_array_levels: {"".join(map_array_levels)}')
-								leaf = value
-								leaves.remove(leaf)
-								break  # leaf must be located at the 4th level of the map, and 1st level of the array
-						case _:
-							continue
-				except StopIteration as exc:
-					raise ValueError(f'leaves {leaves} not found in {path}') from exc
+    Returns:
+            dict[str, Record]: dict of Records and its subclasses, indexed by the leaf indices
+    """
+    registry = {}
+    Record.load_types(path, jnode_path=jnode_path)  # init subclass_registry in  Record
+    prefix = ""
+    event = ""
+    leaf = ""
+    map_array_levels = []
+    leaves = list(
+        leaves
+    )  # make a shallow copy, so that no new leaves will be added, only referencs to leaves will be removed
+    # Find the record
+    with open(path, "r") as f:
 
-			# Extract the record, Name shoulb be gone as the first key
-			# prefix = ".".join(prefix.split('.')[:-2])  # remove the last two segments "Name" and "Value", return to the root of  the item
-			# map_array_levels.pop()  # remove the last level "m", return to the rest of record
-		
-			prefix, event, value = next(parse_events)  # get the end map event
-			current_prefix = ".".join(prefix.split('.')[:-1])  # remove the last segment "Value", return to the root of  the item
-			if event != 'end_map':
-				raise ValueError(f'Invalid event {event} after the leaf {leaf} is found!')
-			else:
-				m = map_array_levels.pop()  # remove the last level "m", return to the rest of record
-				assert m == 'm', f'Invalid map level {m}'
-				peer_level = "".join(map_array_levels)
-				ending_level = "".join(map_array_levels)[:-1]
-		
-			# Init the record and the captured
-			record = {}
-			record['Name'] = leaf   # add the calibration key as name back to the record
-			name = leaf  # init name for the record is the current map key where the leaf is found
-			last_event = event
-			n = None  # current node
-			while True:
-				try:
-					prefix, event, value = next(parse_events)
-					record_path = prefix.replace(current_prefix, "").split('.')
-					record_path.pop(0)
-					# if record_path[0] == '':  # remove the first empty string
-					# record_path.pop(0)
-					# print(f'prefix: {record_path}, event: {event}, value: {value}')
-					match(event):
-						case 'start_map':  # open up a new map on the current nested level
-							map_array_levels.append('m')
-							# start nested map
-							if last_event == 'map_key':  # if last event is map_key, then the current node is a map
-								assert record_path[-1]==name, f'Invalid record path {record_path} for {value}!'  # confirm map key is the last part of the prefixeee
-								n.update({name:{}})  # add the nested map
-								n = n[name]  # get down the nested map 
-							elif last_event == 'start_array':  # if last event is array, then the current node is an array
-								assert record_path[-1]=='item', f'Invalid record path {record_path} for {value}!'  # confirm map key is the last part of the prefixeee
-								n.append({})  # append another map to the array
-								n = n[-1]  # move to the newly created last item  in the  nested array
-							elif last_event == 'end_map':  # if last event is array, then the current node is an array
-								assert record_path[-1]=='item', f'Invalid record path {record_path} for {value}!'  # confirm map key is the last part of the prefixeee
-								# have to update n, because the last event is not map_key, where n is updated
-								n = record
-								for k in record_path[:-1]:
-									if k != 'item':
-										n = n[k]
-									else:  # k == 'item', array  											assert len(d)>0, f'Invalid array {d}'
-										assert len(n)>0, f'Invalid array {n}'
-										n = n[-1]  # get the last item, when generating, fill the items in order
-								n.append({})  # append another map to the array
-								n = n[-1]  # move to the newly created last item  in the  nested array
-							else:
-								raise ValueError(f'{event} should not follow {last_event}!')
-						case 'end_map':
-							m = map_array_levels.pop()
-							assert m == 'm', f'Invalid map level {m}'
-							# if last_event == 'start_map':  #  empty map, no value
-							# 	# last_value[name]={}
-							# 	pass
-							name = ''  # reset map key
+        parse_events = ijson.parse(f)
+        while leaves:
+            while True:
+                try:
+                    prefix, event, value = next(parse_events)
+                    # print(f'prefix: {prefix}, event: {event}, value: {value}')
+                    match (event):
+                        case "start_map":
+                            map_array_levels.append("m")
+                        case "end_map":
+                            m = map_array_levels.pop()
+                            assert m == "m", f"Invalid map level {m}"
+                        case "start_array":
+                            map_array_levels.append("a")
+                        case "end_array":
+                            a = map_array_levels.pop()
+                            assert a == "a", f"Invalid array level {a}"
+                        case "map_key":
+                            pass
+                        case "string":
+                            if (
+                                value in leaves
+                                and prefix.split(".")[-2] == "Name"
+                                and "".join(map_array_levels) == "mmamamm"
+                            ):
+                                # and map_level==4 \
+                                # and array_level==1:  # find the leaf with the key "Name", is the index of  an a2l record
+                                # print(f'prefix: {prefix}, event: {event}, value: {value}, map_array_levels: {"".join(map_array_levels)}')
+                                leaf = value
+                                leaves.remove(leaf)
+                                break  # leaf must be located at the 4th level of the map, and 1st level of the array
+                        case _:
+                            continue
+                except StopIteration as exc:
+                    raise ValueError(f"leaves {leaves} not found in {path}") from exc
 
-							if "".join(map_array_levels)==ending_level:  # 'mmama':
-								break
-							# elif ".".join(map_array_levels)==peer_level:
-							# 	record.update(captured)  # absorb the captured into the record
-							# 	captured = None  # reset the captured
-							# else:  # deeper than peer level
-							# 	captured = record
+            # Extract the record, Name shoulb be gone as the first key
+            # prefix = ".".join(prefix.split('.')[:-2])  # remove the last two segments "Name" and "Value", return to the root of  the item
+            # map_array_levels.pop()  # remove the last level "m", return to the rest of record
 
-						case 'start_array':
-							map_array_levels.append('a')
-							assert last_event == 'map_key', f'{event} should not follow {last_event}!'  # confirm you have the key
-							assert record_path[-1]==name, f'Invalid record path {record_path} for {value}! Data corrupted!'  # confirm map key is the last part of the prefixeee
-							assert n[name]=='', f'Invalid init map {n[name]}!'  # confirm map key is the last part of the prefixeee 
-							n.update({name:[]})  # update default nested dict to default nested array
-							n = n[name]  # get down the nested array
-						case 'end_array':
-							a = map_array_levels.pop() 
-							assert a == 'a', f'Invalid array level {a}'
-							name = ''
+            prefix, event, value = next(parse_events)  # get the end map event
+            current_prefix = ".".join(
+                prefix.split(".")[:-1]
+            )  # remove the last segment "Value", return to the root of  the item
+            if event != "end_map":
+                raise ValueError(
+                    f"Invalid event {event} after the leaf {leaf} is found!"
+                )
+            else:
+                m = (
+                    map_array_levels.pop()
+                )  # remove the last level "m", return to the rest of record
+                assert m == "m", f"Invalid map level {m}"
+                peer_level = "".join(map_array_levels)
+                ending_level = "".join(map_array_levels)[:-1]
 
-							if ".".join(map_array_levels)==ending_level: # if we want to extract an array, then we need to go to the peer level 
-								break
-						case 'map_key':
-							name = value 
-							n = record
-							for k in record_path:
-								if k != 'item':
-									n = n[k]
-								else:  # k == 'item', array  											assert len(d)>0, f'Invalid array {d}'
-									assert len(n)>0, f'Invalid array {n}'
-									n = n[-1]  # get the last item, when generating, fill the items in order
-							n.update({name:''})  # add the key to the map
+            # Init the record and the captured
+            record = {}
+            record["Name"] = leaf  # add the calibration key as name back to the record
+            name = leaf  # init name for the record is the current map key where the leaf is found
+            last_event = event
+            n = None  # current node
+            while True:
+                try:
+                    prefix, event, value = next(parse_events)
+                    record_path = prefix.replace(current_prefix, "").split(".")
+                    record_path.pop(0)
+                    # if record_path[0] == '':  # remove the first empty string
+                    # record_path.pop(0)
+                    # print(f'prefix: {record_path}, event: {event}, value: {value}')
+                    match (event):
+                        case (
+                            "start_map"
+                        ):  # open up a new map on the current nested level
+                            map_array_levels.append("m")
+                            # start nested map
+                            if (
+                                last_event == "map_key"
+                            ):  # if last event is map_key, then the current node is a map
+                                assert (
+                                    record_path[-1] == name
+                                ), f"Invalid record path {record_path} for {value}!"  # confirm map key is the last part of the prefixeee
+                                n.update({name: {}})  # add the nested map
+                                n = n[name]  # get down the nested map
+                            elif (
+                                last_event == "start_array"
+                            ):  # if last event is array, then the current node is an array
+                                assert (
+                                    record_path[-1] == "item"
+                                ), f"Invalid record path {record_path} for {value}!"  # confirm map key is the last part of the prefixeee
+                                n.append({})  # append another map to the array
+                                n = n[
+                                    -1
+                                ]  # move to the newly created last item  in the  nested array
+                            elif (
+                                last_event == "end_map"
+                            ):  # if last event is array, then the current node is an array
+                                assert (
+                                    record_path[-1] == "item"
+                                ), f"Invalid record path {record_path} for {value}!"  # confirm map key is the last part of the prefixeee
+                                # have to update n, because the last event is not map_key, where n is updated
+                                n = record
+                                for k in record_path[:-1]:
+                                    if k != "item":
+                                        n = n[k]
+                                    else:  # k == 'item', array  											assert len(d)>0, f'Invalid array {d}'
+                                        assert len(n) > 0, f"Invalid array {n}"
+                                        n = n[
+                                            -1
+                                        ]  # get the last item, when generating, fill the items in order
+                                n.append({})  # append another map to the array
+                                n = n[
+                                    -1
+                                ]  # move to the newly created last item  in the  nested array
+                            else:
+                                raise ValueError(
+                                    f"{event} should not follow {last_event}!"
+                                )
+                        case "end_map":
+                            m = map_array_levels.pop()
+                            assert m == "m", f"Invalid map level {m}"
+                            # if last_event == 'start_map':  #  empty map, no value
+                            # 	# last_value[name]={}
+                            # 	pass
+                            name = ""  # reset map key
 
-						case 'null' |'boolean' | 'integer' | 'double' | 'number' | 'string':
-							assert name!='', 'map key not available!'
-							if map_array_levels[-1]=='m':   # last_event=''start_map' is volatile!
-								n[name]=value  # single key-value pair in the same map 
-							else:  # map_array_levels[-1] == 'a':
-								n[name].append(value)
-						case _:
-							raise ValueError(f'{event} should not occur! Data corrupted!')
+                            if "".join(map_array_levels) == ending_level:  # 'mmama':
+                                break
+                            # elif ".".join(map_array_levels)==peer_level:
+                            # 	record.update(captured)  # absorb the captured into the record
+                            # 	captured = None  # reset the captured
+                            # else:  # deeper than peer level
+                            # 	captured = record
 
-					last_event = event
-				except StopIteration as exc:
-					raise ValueError(f'{leaf} data corrupted!') from exc
-			# for k,v in ijson.kvitems(parse_events, prefix):
-			# 	if k == 'Name': 
-			# 		if v['Value'] == leaf:
-			# 			break
-			# rec = {k:v for k,v in ijson.kvitems(parse_events, prefix)}
-		
-			record_type = set(re.split(r'\.', prefix)).intersection(set(RecordTypes.__members__.keys()))
-			assert len(record_type)==1, f'Invalid record type/s {record_type}'
-			category = record_type.pop()
-			cls_name = Record.subclass_registry.get(category, 'Record')
-			cls = globals().get(cls_name, Record)
+                        case "start_array":
+                            map_array_levels.append("a")
+                            assert (
+                                last_event == "map_key"
+                            ), f"{event} should not follow {last_event}!"  # confirm you have the key
+                            assert (
+                                record_path[-1] == name
+                            ), f"Invalid record path {record_path} for {value}! Data corrupted!"  # confirm map key is the last part of the prefixeee
+                            assert (
+                                n[name] == ""
+                            ), f"Invalid init map {n[name]}!"  # confirm map key is the last part of the prefixeee
+                            n.update(
+                                {name: []}
+                            )  # update default nested dict to default nested array
+                            n = n[name]  # get down the nested array
+                        case "end_array":
+                            a = map_array_levels.pop()
+                            assert a == "a", f"Invalid array level {a}"
+                            name = ""
 
-			if inspect.isclass(cls) and issubclass(cls, Record):
-				factory = cls
-			else:
-				factory = Record
-		
-			key = f'{cls_name}.{leaf}'
-			registry[key] = factory(**record)  # create the record object and add it to the record registry
-			
-	return registry
+                            if (
+                                ".".join(map_array_levels) == ending_level
+                            ):  # if we want to extract an array, then we need to go to the peer level
+                                break
+                        case "map_key":
+                            name = value
+                            n = record
+                            for k in record_path:
+                                if k != "item":
+                                    n = n[k]
+                                else:  # k == 'item', array  											assert len(d)>0, f'Invalid array {d}'
+                                    assert len(n) > 0, f"Invalid array {n}"
+                                    n = n[
+                                        -1
+                                    ]  # get the last item, when generating, fill the items in order
+                            n.update({name: ""})  # add the key to the map
+
+                        case (
+                            "null"
+                            | "boolean"
+                            | "integer"
+                            | "double"
+                            | "number"
+                            | "string"
+                        ):
+                            assert name != "", "map key not available!"
+                            if (
+                                map_array_levels[-1] == "m"
+                            ):  # last_event=''start_map' is volatile!
+                                n[name] = value  # single key-value pair in the same map
+                            else:  # map_array_levels[-1] == 'a':
+                                n[name].append(value)
+                        case _:
+                            raise ValueError(
+                                f"{event} should not occur! Data corrupted!"
+                            )
+
+                    last_event = event
+                except StopIteration as exc:
+                    raise ValueError(f"{leaf} data corrupted!") from exc
+            # for k,v in ijson.kvitems(parse_events, prefix):
+            # 	if k == 'Name':
+            # 		if v['Value'] == leaf:
+            # 			break
+            # rec = {k:v for k,v in ijson.kvitems(parse_events, prefix)}
+
+            record_type = set(re.split(r"\.", prefix)).intersection(
+                set(RecordTypes.__members__.keys())
+            )
+            assert len(record_type) == 1, f"Invalid record type/s {record_type}"
+            category = record_type.pop()
+            cls_name = Record.subclass_registry.get(category, "Record")
+            cls = globals().get(cls_name, Record)
+
+            if inspect.isclass(cls) and issubclass(cls, Record):
+                factory = cls
+            else:
+                factory = Record
+
+            key = f"{cls_name}.{leaf}"
+            registry[key] = factory(
+                **record
+            )  # create the record object and add it to the record registry
+
+    return registry
 
 # %% ../nbs/01.a2l.ipynb 51
 class XCPConfig(BaseModel):
-	"""XCP configuration for the calibration parameter"""
-	channel: int = Field(default=3, ge=0, le=10000, description='XCP channel')
-	download_can_id: int = Field(default=630, ge=0, lt=10000, alias='download', validate_default=True, description='CAN ID for downloading')
-	upload_can_id: int = Field(default=631, ge=0, lt=10000, alias='upload', validate_default=True, description='CAN ID for uploading')
+    """XCP configuration for the calibration parameter"""
 
+    channel: int = Field(default=3, ge=0, le=10000, description="XCP channel")
+    download_can_id: int = Field(
+        default=630,
+        ge=0,
+        lt=10000,
+        alias="download",
+        validate_default=True,
+        description="CAN ID for downloading",
+    )
+    upload_can_id: int = Field(
+        default=631,
+        ge=0,
+        lt=10000,
+        alias="upload",
+        validate_default=True,
+        description="CAN ID for uploading",
+    )
 
 # %% ../nbs/01.a2l.ipynb 53
-type_collection =  set(['UBYTE', 'SBYTE', 'CHAR', 'UCHAR', 'UWORD', 'SWORD', 'ULONG', 'SLONG', 'FLOAT32_IEEE', 'UINT64', 'INT64', 'FLOAT64_IEEE'])
+type_collection = set(
+    [
+        "UBYTE",
+        "SBYTE",
+        "CHAR",
+        "UCHAR",
+        "UWORD",
+        "SWORD",
+        "ULONG",
+        "SLONG",
+        "FLOAT32_IEEE",
+        "UINT64",
+        "INT64",
+        "FLOAT64_IEEE",
+    ]
+)
+
 
 def check_a2l_type(v: str) -> str:
-	assert v in type_collection, f'Invalid data type {v}'
-	return v
+    assert v in type_collection, f"Invalid data type {v}"
+    return v
+
 
 A2LDataType = Annotated[str, AfterValidator(check_a2l_type)]
 
 # %% ../nbs/01.a2l.ipynb 59
 class XCPData(BaseModel):
-	"""XCP data for the calibration parameter"""
-	name: str = Field(frozen=True,default='TQD_trqTrqSetNormal_MAP_v', description='XCP calibration name')
-	address: Optional[str] = Field(frozen=True,default='7000aa2a',pattern=r'^[0-9A-Fa-f]{8}$', description='Target Ecu address')
-	dim: conlist(Annotated[int,Field(frozen=True,gt=0,lt=50)],min_length=2,max_length=2)
-	value_type: A2LDataType = Field(frozen=True,default='FLOAT32_IEEE', description='Customized XCP data type')
-	value_length: int = Field(frozen=True,default=4,multiple_of=2,gt=0,description='XCP data type length in Bytes, redundant to value type')
-	value: str = Field(pattern=r'^[0-9A-Fa-f]{0,3000}$', min_length=1, max_length=3000, description='XCP calbiration data')
+    """XCP data for the calibration parameter"""
 
-	model_config = ConfigDict(revalidate_instances='always')
-	# class Config:
-	# 	revalidate_instances = True
+    name: str = Field(
+        frozen=True,
+        default="TQD_trqTrqSetNormal_MAP_v",
+        description="XCP calibration name",
+    )
+    address: Optional[str] = Field(
+        frozen=True,
+        default="7000aa2a",
+        pattern=r"^[0-9A-Fa-f]{8}$",
+        description="Target Ecu address",
+    )
+    dim: conlist(
+        Annotated[int, Field(frozen=True, gt=0, lt=50)], min_length=2, max_length=2
+    )
+    value_type: A2LDataType = Field(
+        frozen=True, default="FLOAT32_IEEE", description="Customized XCP data type"
+    )
+    value_length: int = Field(
+        frozen=True,
+        default=4,
+        multiple_of=2,
+        gt=0,
+        description="XCP data type length in Bytes, redundant to value type",
+    )
+    value: str = Field(
+        pattern=r"^[0-9A-Fa-f]{0,3000}$",
+        min_length=1,
+        max_length=3000,
+        description="XCP calbiration data",
+    )
 
-	@model_validator(mode="after")
-	def check_map_dimension(self) -> 'XCPData':
-		array_size = self.dim[0]*self.dim[1]*self.type_size
-		if len(self.value)!=array_size*2:
-			raise ValueError(f'value length {len(self.value)}!=(dimension {self.dim})*(value length {array_size*2})!')
-		return self
-	
-	@model_validator(mode="after")
-	def check_value_length(self) -> 'XCPData':
-		if self.value_length!=self.type_size:
-			raise ValueError(f'Value length {self.value_length} doesn\'t match data type {self.value_type}({self.type_size})!')
-		return self
+    model_config = ConfigDict(revalidate_instances="always")
+    # class Config:
+    # 	revalidate_instances = True
 
-	@cached_property
-	def type_size(self):
-		match(self.value_type):
-			case 'UBYTE' | 'SBYTE' | 'CHAR' | 'UCHAR':
-				return 1
-			case 'UWORD' | 'SWORD':
-				return 2
-			case 'ULONG' | 'SLONG' | 'FLOAT32_IEEE':
-				return 4
-			case 'UINT64' | 'INT64' | 'FLOAT64_IEEE':
-				return 8
-			case _:
-				raise ValueError(f'Invalid data type {self.value_type}')
-			
-	@staticmethod
-	def binary32_to_float(binary32):
-		return struct.unpack('!f',struct.pack('!I', int(binary32, 2)))[0]
-	
+    @model_validator(mode="after")
+    def check_map_dimension(self) -> "XCPData":
+        array_size = self.dim[0] * self.dim[1] * self.type_size
+        if len(self.value) != array_size * 2:
+            raise ValueError(
+                f"value length {len(self.value)}!=(dimension {self.dim})*(value length {array_size*2})!"
+            )
+        return self
 
-	@staticmethod
-	def hex_to_float(h:str)->list[float]:
-		"""__summary__: convert hex string (every 4 characters) to float(16 bits, 2 bytes)
+    @model_validator(mode="after")
+    def check_value_length(self) -> "XCPData":
+        if self.value_length != self.type_size:
+            raise ValueError(
+                f"Value length {self.value_length} doesn't match data type {self.value_type}({self.type_size})!"
+            )
+        return self
 
-		Args:
-			h (str): _description_ string of hex numbers, must be multiple of 4
+    @cached_property
+    def type_size(self):
+        match (self.value_type):
+            case "UBYTE" | "SBYTE" | "CHAR" | "UCHAR":
+                return 1
+            case "UWORD" | "SWORD":
+                return 2
+            case "ULONG" | "SLONG" | "FLOAT32_IEEE":
+                return 4
+            case "UINT64" | "INT64" | "FLOAT64_IEEE":
+                return 8
+            case _:
+                raise ValueError(f"Invalid data type {self.value_type}")
 
-		Returns:
-			list[float]: _description_ list of floats  len(h)/4
-		"""
-		# return struct.unpack('!f', struct.pack('!I', int(hex, 16)))[0]
-		b = bytes.fromhex(h)[::-1]  # reverse the endianess (and as side-effect the array order as well)
-		a = [struct.unpack('!f', b[i:i+4])[0] for i in range(0, len(b), 4)]  # convert each byte from string to float
-		return a[::-1]  # reverse array order back
+    @staticmethod
+    def binary32_to_float(binary32):
+        return struct.unpack("!f", struct.pack("!I", int(binary32, 2)))[0]
 
-	@cached_property
-	def value_array_view(self) -> np.ndarray:
-		match self.value_type:
-			case 'UBYTE':  # 1 byte
-				return np.array([int(self.value[i:i+2], 16) for i in range(0, len(self.value), 2)]).reshape(tuple(self.dim)).astype(np.uint8)
-			case 'SBYTE':  # 1 byte
-				return np.array([int(self.value[i:i+2], 16) for i in range(0, len(self.value), 2)]).reshape(tuple(self.dim)).astype(np.int8)
-			case 'CHAR':   # 1 byte
-				return np.array([int(self.value[i:i+2], 16) for i in range(0, len(self.value), 2)]).reshape(tuple(self.dim)).astype(np.byte)
-			case 'UCHAR':  # 1 byte
-				return np.array([int(self.value[i:i+2], 16) for i in range(0, len(self.value), 2)]).reshape(tuple(self.dim)).astype(np.ubyte)
-			case 'SWORD':  # 2 bytes
-				return np.array([int(self.value[i:i+4], 16) for i in range(0, len(self.value), 4)]).reshape(tuple(self.dim)).astype(np.short)
-			case 'UWORD':  # 2 bytes
-				return np.array([int(self.value[i:i+4], 16) for i in range(0, len(self.value), 4)]).reshape(tuple(self.dim)).astype(np.ushort)
-			case 'SLONG':  # 4 bytes , long is int
-				return np.array(self.hex_to_float(self.value)).reshape(tuple(self.dim)).astype(np.int_)
-			case 'ULONG':  # 4 bytes
-				return np.array(self.hex_to_float(self.value)).reshape(tuple(self.dim)).astype(np.uint)
-			case 'FLOAT32_IEEE':  # 4 bytes
-				return np.array(self.hex_to_float(self.value)).reshape(tuple(self.dim)).astype(np.float32)
-			case 'UINT64':  # 8 bytes
-				return np.array(self.hex_to_float(self.value)).reshape(tuple(self.dim)).astype(np.ulonglong)
-			case 'INT64':  # 8 bytes
-				return np.array(self.hex_to_float(self.value)).reshape(tuple(self.dim)).astype(np.longlong)
-			case 'FLOAT64_IEEE':  # 8 bytes
-				return np.array(self.hex_to_float(self.value)).reshape(tuple(self.dim)).astype(np.float64)
-			case _:
-				raise ValueError(f'Invalid data type {self.value_type}')
+    @staticmethod
+    def hex_to_float(h: str) -> list[float]:
+        """__summary__: convert hex string (every 4 characters) to float(16 bits, 2 bytes)
 
-	@cached_property
-	def value_bytes(self) -> bytes:
-		return bytes.fromhex(self.value)
+        Args:
+                h (str): _description_ string of hex numbers, must be multiple of 4
 
-	@cached_property
-	def address_int(self) -> int:
-		return int(self.address, 16)
+        Returns:
+                list[float]: _description_ list of floats  len(h)/4
+        """
+        # return struct.unpack('!f', struct.pack('!I', int(hex, 16)))[0]
+        b = bytes.fromhex(h)[
+            ::-1
+        ]  # reverse the endianess (and as side-effect the array order as well)
+        a = [
+            struct.unpack("!f", b[i : i + 4])[0] for i in range(0, len(b), 4)
+        ]  # convert each byte from string to float
+        return a[::-1]  # reverse array order back
 
-	def is_compatible(self, other: 'XCPData') -> bool:  # Forward referencing is default for Python3.7+
-		return self.value_type == other.value_type \
-			and self.dim == other.dim \
-			and self.address == other.address \
-			and self.name == other.name
+    @cached_property
+    def value_array_view(self) -> np.ndarray:
+        match self.value_type:
+            case "UBYTE":  # 1 byte
+                return (
+                    np.array(
+                        [
+                            int(self.value[i : i + 2], 16)
+                            for i in range(0, len(self.value), 2)
+                        ]
+                    )
+                    .reshape(tuple(self.dim))
+                    .astype(np.uint8)
+                )
+            case "SBYTE":  # 1 byte
+                return (
+                    np.array(
+                        [
+                            int(self.value[i : i + 2], 16)
+                            for i in range(0, len(self.value), 2)
+                        ]
+                    )
+                    .reshape(tuple(self.dim))
+                    .astype(np.int8)
+                )
+            case "CHAR":  # 1 byte
+                return (
+                    np.array(
+                        [
+                            int(self.value[i : i + 2], 16)
+                            for i in range(0, len(self.value), 2)
+                        ]
+                    )
+                    .reshape(tuple(self.dim))
+                    .astype(np.byte)
+                )
+            case "UCHAR":  # 1 byte
+                return (
+                    np.array(
+                        [
+                            int(self.value[i : i + 2], 16)
+                            for i in range(0, len(self.value), 2)
+                        ]
+                    )
+                    .reshape(tuple(self.dim))
+                    .astype(np.ubyte)
+                )
+            case "SWORD":  # 2 bytes
+                return (
+                    np.array(
+                        [
+                            int(self.value[i : i + 4], 16)
+                            for i in range(0, len(self.value), 4)
+                        ]
+                    )
+                    .reshape(tuple(self.dim))
+                    .astype(np.short)
+                )
+            case "UWORD":  # 2 bytes
+                return (
+                    np.array(
+                        [
+                            int(self.value[i : i + 4], 16)
+                            for i in range(0, len(self.value), 4)
+                        ]
+                    )
+                    .reshape(tuple(self.dim))
+                    .astype(np.ushort)
+                )
+            case "SLONG":  # 4 bytes , long is int
+                return (
+                    np.array(self.hex_to_float(self.value))
+                    .reshape(tuple(self.dim))
+                    .astype(np.int_)
+                )
+            case "ULONG":  # 4 bytes
+                return (
+                    np.array(self.hex_to_float(self.value))
+                    .reshape(tuple(self.dim))
+                    .astype(np.uint)
+                )
+            case "FLOAT32_IEEE":  # 4 bytes
+                return (
+                    np.array(self.hex_to_float(self.value))
+                    .reshape(tuple(self.dim))
+                    .astype(np.float32)
+                )
+            case "UINT64":  # 8 bytes
+                return (
+                    np.array(self.hex_to_float(self.value))
+                    .reshape(tuple(self.dim))
+                    .astype(np.ulonglong)
+                )
+            case "INT64":  # 8 bytes
+                return (
+                    np.array(self.hex_to_float(self.value))
+                    .reshape(tuple(self.dim))
+                    .astype(np.longlong)
+                )
+            case "FLOAT64_IEEE":  # 8 bytes
+                return (
+                    np.array(self.hex_to_float(self.value))
+                    .reshape(tuple(self.dim))
+                    .astype(np.float64)
+                )
+            case _:
+                raise ValueError(f"Invalid data type {self.value_type}")
 
-	def __repr__(self) -> str:
-		np.set_printoptions(threshold=2, precision=3)
-		d = self.__dict__.copy()
-		d['value'] = f"{self.value:.10s}...{self.value[-3:]}"
-		d['value_array_view'] = self.value_array_view
-		d['value_bytes'] = f"{self.value_bytes[:1]}...{self.value_bytes[-1:]}"
-		return pformat(d, indent=4, width=80, compact=True)
+    @cached_property
+    def value_bytes(self) -> bytes:
+        return bytes.fromhex(self.value)
+
+    @cached_property
+    def address_int(self) -> int:
+        return int(self.address, 16)
+
+    def is_compatible(
+        self, other: "XCPData"
+    ) -> bool:  # Forward referencing is default for Python3.7+
+        return (
+            self.value_type == other.value_type
+            and self.dim == other.dim
+            and self.address == other.address
+            and self.name == other.name
+        )
+
+    def __repr__(self) -> str:
+        np.set_printoptions(threshold=2, precision=3)
+        d = self.__dict__.copy()
+        d["value"] = f"{self.value:.10s}...{self.value[-3:]}"
+        d["value_array_view"] = self.value_array_view
+        d["value_bytes"] = f"{self.value_bytes[:1]}...{self.value_bytes[-1:]}"
+        return pformat(d, indent=4, width=80, compact=True)
 
 # %% ../nbs/01.a2l.ipynb 60
-def Get_Init_XCPData(path: Path=Path('../res/init_value_17rows.json'))->List[XCPData]:
+def Get_Init_XCPData(
+    path: Path = Path("../res/init_value_17rows.json"),
+) -> List[XCPData]:
 
-	xcp_data = []
-	with open(path) as f:   
-		init_values = json.load(f)
-		data = init_values['data']
-		for v in data:
-			try:
-				xcp_data.append(XCPData(**v))
-			except ValidationError as exc:
-				print(exc)
-	
-	return xcp_data
+    xcp_data = []
+    with open(path) as f:
+        init_values = json.load(f)
+        data = init_values["data"]
+        for v in data:
+            try:
+                xcp_data.append(XCPData(**v))
+            except ValidationError as exc:
+                print(exc)
+
+    return xcp_data
 
 # %% ../nbs/01.a2l.ipynb 74
 class XCPCalib(BaseModel):
-	"""XCP calibration parameter"""
-	config: XCPConfig = Field(default_factory=XCPConfig, description='XCP configuration')
-	data: List[XCPData] = Field(default_factory=List[XCPData], description='list of XCP calibration data')
+    """XCP calibration parameter"""
 
-	# @model_serializer
-	# def ser_model(self):
-	# 	data = [d.model_dump() for d in self.data]
-	# 	res = self.config.model_dump(), 
-	# 	res.update({'data': data})
-		# return res
+    config: XCPConfig = Field(
+        default_factory=XCPConfig, description="XCP configuration"
+    )
+    data: List[XCPData] = Field(
+        default_factory=List[XCPData], description="list of XCP calibration data"
+    )
+
+    # @model_serializer
+    # def ser_model(self):
+    # 	data = [d.model_dump() for d in self.data]
+    # 	res = self.config.model_dump(),
+    # 	res.update({'data': data})
+    # return res
 
 # %% ../nbs/01.a2l.ipynb 75
-def Get_XCPCalib_From_XCPJSon(path: Path=Path('../res/download.json'))->XCPCalib:
+def Get_XCPCalib_From_XCPJSon(path: Path = Path("../res/download.json")) -> XCPCalib:
 
-	with open(path) as f:   
-		d = json.load(f)
-		data = d['data']
-		xcp_data = []
-		for v in data:
-			xcp_data.append(XCPData(**v))
+    with open(path) as f:
+        d = json.load(f)
+        data = d["data"]
+        xcp_data = []
+        for v in data:
+            xcp_data.append(XCPData(**v))
 
-		config =d['config']
-		xcp_config = XCPConfig(config=config)
-	
-	xcp_calib = XCPCalib(config=xcp_config, data=xcp_data)
-	
-	return xcp_calib
+        config = d["config"]
+        xcp_config = XCPConfig(config=config)
+
+    xcp_calib = XCPCalib(config=xcp_config, data=xcp_data)
+
+    return xcp_calib
 
 # %% ../nbs/01.a2l.ipynb 76
 def Generate_Init_XCPData_From_A2L(
-		a2l: Path=Path('../res/vbu_sample.json'), 
-		keys: List[str]=['TQD_trqTrqSetNormal_MAP_v',
-					"VBU_L045A_CWP_05_09T_AImode_CM_single",
-					"Lookup2D_FLOAT32_IEEE",
-					"Lookup2D_X_FLOAT32_IEEE, " 
-					"TQD_vVehSpd",
-					"TQD_vSgndSpd_MAP_y",
-					"TQD_pctAccPedPosFlt",
-					"TQD_pctAccPdl_MAP_x"],
-		node_path: str='/PROJECT/MODULE[]')->XCPData:
-	"""Generate XCP calibration header from A2L file and calibration parameter name
+    a2l: Path = Path("../res/vbu_sample.json"),
+    keys: List[str] = [
+        "TQD_trqTrqSetNormal_MAP_v",
+        "VBU_L045A_CWP_05_09T_AImode_CM_single",
+        "Lookup2D_FLOAT32_IEEE",
+        "Lookup2D_X_FLOAT32_IEEE, " "TQD_vVehSpd",
+        "TQD_vSgndSpd_MAP_y",
+        "TQD_pctAccPedPosFlt",
+        "TQD_pctAccPdl_MAP_x",
+    ],
+    node_path: str = "/PROJECT/MODULE[]",
+) -> XCPData:
+    """Generate XCP calibration header from A2L file and calibration parameter name
 
-	Args:
-		a2l (Path): path to the A2L file
-		keys (List[str]): calibration parameter name
-		node_path (str): path to the calibration parameter in the A2L json file
+    Args:
+            a2l (Path): path to the A2L file
+            keys (List[str]): calibration parameter name
+            node_path (str): path to the calibration parameter in the A2L json file
 
-	Returns:
-		XCPCalib: XCP calibration parameter
-	"""
+    Returns:
+            XCPCalib: XCP calibration parameter
+    """
 
-	# load calibration parameter from A2L file
-	if Record.record_registry is None:
-		Record.load_records(a2l, keys, JsonNodePath(node_path))
-	idx = 'Calibration.' + keys[0]
-	calib = Record.record_registry[idx]
-	# calibs = load_records_lazy(a2l, keys, JsonNodePath(node_path))
-	# calib = calibs[idx]
+    # load calibration parameter from A2L file
+    if Record.record_registry is None:
+        Record.load_records(a2l, keys, JsonNodePath(node_path))
+    idx = "Calibration." + keys[0]
+    calib = Record.record_registry[idx]
+    # calibs = load_records_lazy(a2l, keys, JsonNodePath(node_path))
+    # calib = calibs[idx]
 
-	# create XCP calibration parameter
-	dim = [int(calib.axes[0].MaxAxisPoints['Value']), int(calib.axes[1].MaxAxisPoints['Value'])]
-	init_xcp_data=dim[0]*dim[1]*calib.record_type.type_size*2*'0'  # byte_size*2 for hex string length
-	xcp_data = XCPData(name=calib.Name, 
-					address=calib.address, 
-					dim=dim, 
-					value_type=calib.record_type.data_type,
-					value_length=calib.record_type.type_size,
-					value=init_xcp_data)
+    # create XCP calibration parameter
+    dim = [
+        int(calib.axes[0].MaxAxisPoints["Value"]),
+        int(calib.axes[1].MaxAxisPoints["Value"]),
+    ]
+    init_xcp_data = (
+        dim[0] * dim[1] * calib.record_type.type_size * 2 * "0"
+    )  # byte_size*2 for hex string length
+    xcp_data = XCPData(
+        name=calib.Name,
+        address=calib.address,
+        dim=dim,
+        value_type=calib.record_type.data_type,
+        value_length=calib.record_type.type_size,
+        value=init_xcp_data,
+    )
 
-	return xcp_data
+    return xcp_data
 
 # %% ../nbs/01.a2l.ipynb 89
-def load_a2l_lazy(path: Path, leaves: list[str])->dict:
-	""" Search for the calibration key in the A2L file.
-	Descripttion: Load the A2L file as a dictionary.
+def load_a2l_lazy(path: Path, leaves: list[str]) -> dict:
+    """Search for the calibration key in the A2L file.
+    Descripttion: Load the A2L file as a dictionary.
 
-	Args:
-		path (str): The path to the A2L file.
-		calib_key (str): The node path to the calibration parameters.
+    Args:
+            path (str): The path to the A2L file.
+            calib_key (str): The node path to the calibration parameters.
 
-	Returns:
-		dict: The A2L file as a dictionary.
-	"""
-	records = []
-	for leaf in leaves:
-		prefix = ''
-		with open(path, "r") as f:
-			parser = ijson.parse(f)
-			while True:
-				prefix, event, value = next(parser)
-				if value == leaf:
-					break
-			else:
-				raise ValueError(f'Key {key} not found in the A2L file.')
-			
-			prefix = ".".join(prefix.split('.')[:-2])  # remove the last two segments "Name" and "Value", return to the root of  the item
-			objects =  ijson.kvitems(parser, prefix)
-			record  = {k:v for k,v in objects}
-			record['Name'] = leaf   # add the calibration key as name back to the record
-			records.append(record)
+    Returns:
+            dict: The A2L file as a dictionary.
+    """
+    records = []
+    for leaf in leaves:
+        prefix = ""
+        with open(path, "r") as f:
+            parser = ijson.parse(f)
+            while True:
+                prefix, event, value = next(parser)
+                if value == leaf:
+                    break
+            else:
+                raise ValueError(f"Key {key} not found in the A2L file.")
 
-	return records
+            prefix = ".".join(
+                prefix.split(".")[:-2]
+            )  # remove the last two segments "Name" and "Value", return to the root of  the item
+            objects = ijson.kvitems(parser, prefix)
+            record = {k: v for k, v in objects}
+            record["Name"] = leaf  # add the calibration key as name back to the record
+            records.append(record)
+
+    return records
 
 # %% ../nbs/01.a2l.ipynb 91
-def load_a2l_eager(path: Path, jnode_path: JsonNodePath=JsonNodePath('/PROJECT/MODULE[]'))->dict:
-	""" Load the A2L file as a dictionary.
-	Descripttion: Load the A2L file as a dictionary.
+def load_a2l_eager(
+    path: Path, jnode_path: JsonNodePath = JsonNodePath("/PROJECT/MODULE[]")
+) -> dict:
+    """Load the A2L file as a dictionary.
+    Descripttion: Load the A2L file as a dictionary.
 
-	Args:
-		path (Path): The path to the A2L file.
-		node (str): The node to search for, e.g. "/PROJECT/MODULE[0]/CHARACTERISTIC".
+    Args:
+            path (Path): The path to the A2L file.
+            node (str): The node to search for, e.g. "/PROJECT/MODULE[0]/CHARACTERISTIC".
 
-	Returns:
-		dict: The A2L file as a dictionary.
-	"""
-	records = {}
-	path_list = re.split(r'\.', jnode_path.lazy_path)[:-1]
-	with open(path, "r") as f:
-		n = json.load(f)
-		for p in path_list:
-			n = n[p] 
-		# only the first module is used
-		# sections = ['CHARACTERISTIC', 'MEASUREMENT', 'AXIS_PTS', 'COMPU_METHOD']
-		# for s in sections:
-		# 	for key, value in n[s].items():
-		# 		print(key, value)
-				# if prefix.endswith(".ECU_ADDRESS"):
-				# 	yield value
-			# a2l = json.load(f)
-	return n
+    Returns:
+            dict: The A2L file as a dictionary.
+    """
+    records = {}
+    path_list = re.split(r"\.", jnode_path.lazy_path)[:-1]
+    with open(path, "r") as f:
+        n = json.load(f)
+        for p in path_list:
+            n = n[p]
+        # only the first module is used
+        # sections = ['CHARACTERISTIC', 'MEASUREMENT', 'AXIS_PTS', 'COMPU_METHOD']
+        # for s in sections:
+        # 	for key, value in n[s].items():
+        # 		print(key, value)
+        # if prefix.endswith(".ECU_ADDRESS"):
+        # 	yield value
+        # a2l = json.load(f)
+    return n
 
 # %% ../nbs/01.a2l.ipynb 97
 if __name__ == "__main__" and "__file__" in globals():
-    
+
     # parser = get_argparser()
     args = parser.parse_args(
-    	[
-    		"-p",
-    		# r"../res/VBU_AI.json",
-    		r"../res/VBU_AI.json",
-    		"-n",
-    		r"/PROJECT/MODULE[], ",
-    		"-l",
-    		r"TQD_trqTrqSetNormal_MAP_v, " 
-    				r"VBU_L045A_CWP_05_09T_AImode_CM_single, " 
-    				r"Lookup2D_FLOAT32_IEEE, "
-    				r"Lookup2D_X_FLOAT32_IEEE, "
-    				r"TQD_vVehSpd, "
-    				r"TQD_vSgndSpd_MAP_y, "
-    				r"TQD_pctAccPedPosFlt, "
-    				r"TQD_pctAccPdl_MAP_x",
-    	]
+        [
+            "-p",
+            # r"../res/VBU_AI.json",
+            r"../res/VBU_AI.json",
+            "-n",
+            r"/PROJECT/MODULE[], ",
+            "-l",
+            r"TQD_trqTrqSetNormal_MAP_v, "
+            r"VBU_L045A_CWP_05_09T_AImode_CM_single, "
+            r"Lookup2D_FLOAT32_IEEE, "
+            r"Lookup2D_X_FLOAT32_IEEE, "
+            r"TQD_vVehSpd, "
+            r"TQD_vSgndSpd_MAP_y, "
+            r"TQD_pctAccPedPosFlt, "
+            r"TQD_pctAccPdl_MAP_x",
+        ]
     )
     pprint(args.path, args.leaves, args.node_path)
