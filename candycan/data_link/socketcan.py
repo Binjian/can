@@ -23,8 +23,9 @@ from multiprocessing.managers import DictProxy
 
 # %% ../../nbs/04.data_link.socketcan.ipynb 4
 import can
+
 # from can.interface import Bus
-# from can import Message 
+# from can import Message
 import cantools
 from cantools.database import Message as MessageTpl
 from cantools.database.can.database import Database
@@ -93,9 +94,10 @@ def get_argparser() -> argparse.ArgumentParser:
 
     return parser
 
-
 # %% ../../nbs/04.data_link.socketcan.ipynb 8
 done = threading.Event()
+
+
 def signal_usr1(signum, frame):
     """Handle USR1 signal as an event to set the received flag."""
     # global received
@@ -105,7 +107,15 @@ def signal_usr1(signum, frame):
     # print("received signal, sending done!")
 
 # %% ../../nbs/04.data_link.socketcan.ipynb 9
-def send_msg(db:Database, message:str, payload:bytes, channel:str, bitrate:int, bus_type: str, is_extended: bool) -> None:
+def send_msg(
+    db: Database,
+    message: str,
+    payload: bytes,
+    channel: str,
+    bitrate: int,
+    bus_type: str,
+    is_extended: bool,
+) -> None:
     """
     send a CAN frame with bytes interface, the multiprocessing interface has to use PIPE which is character based.
     """
@@ -125,18 +135,19 @@ def send_msg(db:Database, message:str, payload:bytes, channel:str, bitrate:int, 
     with can.interface.Bus(bustype=bus_type, channel=channel, bitrate=bitrate) as bus:
         bus.send(message)
 
-
 # %% ../../nbs/04.data_link.socketcan.ipynb 18
-def receive_message(message_proxy: DictProxy,bus: can.interface.Bus)->None:
-	print('waiting for message')
-	msg:can.Message = bus.recv()
-	print('message received')
-	message_proxy['timestamp'] = msg.timestamp
-	message_proxy['arbitration_id'] = msg.arbitration_id
-	message_proxy['data']=msg.data
+def receive_message(message_proxy: DictProxy, bus: can.interface.Bus) -> None:
+    print("waiting for message")
+    msg: can.Message = bus.recv()
+    print("message received")
+    message_proxy["timestamp"] = msg.timestamp
+    message_proxy["arbitration_id"] = msg.arbitration_id
+    message_proxy["data"] = msg.data
 
 # %% ../../nbs/04.data_link.socketcan.ipynb 28
-if __name__ == "__main__" and "__file__" in globals():   # in order to be compatible for both script and notebnook
+if (
+    __name__ == "__main__" and "__file__" in globals()
+):  # in order to be compatible for both script and notebnook
 
     # print(os.getcwd())
     p = get_argparser()
@@ -162,11 +173,17 @@ if __name__ == "__main__" and "__file__" in globals():   # in order to be compat
     except FileNotFoundError as e:
         print(f"File not found: {e}")
 
-
     payload = sys.stdin.buffer.read()
-    
-    send_msg(db=db,message=args.message,payload=payload,channel=args.channel,bitrate=args.bitrate,bus_type=args.type,is_extended=args.extended)
 
+    send_msg(
+        db=db,
+        message=args.message,
+        payload=payload,
+        channel=args.channel,
+        bitrate=args.bitrate,
+        bus_type=args.type,
+        is_extended=args.extended,
+    )
 
     signal.signal(signal.SIGUSR1, signal_usr1)
     # print("set message handler and sleep")
@@ -175,5 +192,3 @@ if __name__ == "__main__" and "__file__" in globals():   # in order to be compat
     done.wait()
     time_lapsed = time.time() - now
     print(f"Signal received after {time_lapsed:.3f} seconds")
-
-

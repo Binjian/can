@@ -23,8 +23,9 @@ from multiprocessing.managers import DictProxy
 
 # %% ../../nbs/05.data_link.scapycan.ipynb 4
 import can
+
 # from can.interface import Bus
-# from can import Message 
+# from can import Message
 import cantools
 from cantools.database import Message as MessageTpl
 from cantools.database.can.database import Database
@@ -96,9 +97,10 @@ def get_argparser() -> argparse.ArgumentParser:
 
     return parser
 
-
 # %% ../../nbs/05.data_link.scapycan.ipynb 9
 done = threading.Event()
+
+
 def signal_usr1(signum, frame):
     """Handle USR1 signal as an event to set the received flag."""
     # global received
@@ -108,15 +110,16 @@ def signal_usr1(signum, frame):
     # print("received signal, sending done!")
 
 # %% ../../nbs/05.data_link.scapycan.ipynb 10
-def send_msg(db:Database, 
-            message:str, 
-            payload:bytes, 
-            channel:str, 
-            bitrate:int, 
-            bus_type: str, 
-            can_filters: list[dict], 
-            is_extended:bool
-            ) -> int:
+def send_msg(
+    db: Database,
+    message: str,
+    payload: bytes,
+    channel: str,
+    bitrate: int,
+    bus_type: str,
+    can_filters: list[dict],
+    is_extended: bool,
+) -> int:
     """
     send a message to the CAN bus
 
@@ -133,14 +136,16 @@ def send_msg(db:Database,
     can_data = message_definition.encode(data_dict)
     packet = CAN(identifier=message_definition.frame_id, data=can_data)
     # create socket
-    socket = CANSocket(bustype=bus_type, 
-                    channel=channel, 
-                    can_filters=can_filters, 
-                    bitrate=bitrate, 
-                    is_extended=is_extended)
+    socket = CANSocket(
+        bustype=bus_type,
+        channel=channel,
+        can_filters=can_filters,
+        bitrate=bitrate,
+        is_extended=is_extended,
+    )
     # send can message through the socket
     ret = socket.send(packet)
-    
+
     return ret
     # message = can.Message(
     #     arbitration_id=message_definition.frame_id,
@@ -152,22 +157,22 @@ def send_msg(db:Database,
     # with can.interface.Bus(bustype=bus_type, channel=channel, bitrate=bitrate) as bus:
     #     bus.send(message)
 
-
 # %% ../../nbs/05.data_link.scapycan.ipynb 16
 load_layer("can")
 # use native cansocket (SocketCAN)
-conf.contribs['CANSocket'] = {'use_python_can': False}
-load_contrib('cansocket')
-
+conf.contribs["CANSocket"] = {"use_python_can": False}
+load_contrib("cansocket")
 
 # %% ../../nbs/05.data_link.scapycan.ipynb 35
-if __name__ == "__main__" and "__file__" in globals():   # in order to be compatible for both script and notebnook
+if (
+    __name__ == "__main__" and "__file__" in globals()
+):  # in order to be compatible for both script and notebnook
 
     # print(os.getcwd())
     p = get_argparser()
     args = p.parse_args()
     # as exported python script, path of res/motohawk_new.dbc is relative to the script
-    args.dbc = repo.working_dir + '/res/motohawk_new.dbc'
+    args.dbc = repo.working_dir + "/res/motohawk_new.dbc"
     # args = p.parse_args(
     #     [
     #         "--type",
@@ -189,19 +194,19 @@ if __name__ == "__main__" and "__file__" in globals():   # in order to be compat
     except FileNotFoundError as e:
         print(f"File not found: {e}")
 
-
     payload = sys.stdin.buffer.read()
-    
-    ret_bytes = send_msg(db=db,
-            message=args.message,
-            payload=payload,
-            channel=args.channel,
-            bitrate=args.bitrate,
-            bus_type=args.type,
-            can_filters=None,
-            is_extended=args.extended)
-    print(f"sent bytes: {ret_bytes}")
 
+    ret_bytes = send_msg(
+        db=db,
+        message=args.message,
+        payload=payload,
+        channel=args.channel,
+        bitrate=args.bitrate,
+        bus_type=args.type,
+        can_filters=None,
+        is_extended=args.extended,
+    )
+    print(f"sent bytes: {ret_bytes}")
 
     signal.signal(signal.SIGUSR1, signal_usr1)
     # print("set message handler and sleep")
@@ -210,5 +215,3 @@ if __name__ == "__main__" and "__file__" in globals():   # in order to be compat
     done.wait()
     time_lapsed = time.time() - now
     print(f"Signal received after {time_lapsed:.3f} seconds")
-
-

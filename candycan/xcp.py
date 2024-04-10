@@ -36,7 +36,6 @@ from candycan.a2l import (
     Generate_Init_XCPData_From_A2L,
 )
 
-
 # %% ../nbs/03.xcp.ipynb 8
 pp = PrettyPrinter(indent=4, width=80, compact=True)
 
@@ -48,98 +47,95 @@ pprint(repo.working_dir)
 
 # %% ../nbs/03.xcp.ipynb 10
 def get_argparser() -> argparse.ArgumentParser:
-	"""Summary
-	Get argument parser for command line arguments
+    """Summary
+    Get argument parser for command line arguments
 
-	Returns:
-		argparse.ArgumentParser: _description_
-	"""
-	parser = argparse.ArgumentParser(description='XCP Processing')
+    Returns:
+            argparse.ArgumentParser: _description_
+    """
+    parser = argparse.ArgumentParser(description="XCP Processing")
 
-	parser.add_argument(
-		'--protocol',
-		type=str,
-		choices=['ccp', 'xcp'],
-		default='ccp',
-		help='Protocol to use: ccp/xcp',
-	)
+    parser.add_argument(
+        "--protocol",
+        type=str,
+        choices=["ccp", "xcp"],
+        default="ccp",
+        help="Protocol to use: ccp/xcp",
+    )
 
-	parser.add_argument(
-		'--download',
-		default=False,
-		help='Download or upload: default is download(host->target)',
-		action='store_true',
-	)
+    parser.add_argument(
+        "--download",
+        default=False,
+        help="Download or upload: default is download(host->target)",
+        action="store_true",
+    )
 
-	parser.add_argument(
-		'--diff_flashing',
-		default=True,
-		help='use differential flashing',
-		action='store_false',
-	)
+    parser.add_argument(
+        "--diff_flashing",
+        default=True,
+        help="use differential flashing",
+        action="store_false",
+    )
 
-	parser.add_argument(
-		'--a2l', 
-		type=str,
-        default=repo.working_dir+'/res/VBU_AI.json',
-		help='a2l json file path')
-		
-	parser.add_argument(
-		"--node-path",
-		type=str,
-		default=r"/PROJECT/MODULE[]",
-		help="node path to search for calibration parameters",
-	)
+    parser.add_argument(
+        "--a2l",
+        type=str,
+        default=repo.working_dir + "/res/VBU_AI.json",
+        help="a2l json file path",
+    )
 
-	parser.add_argument(
-		"--leaves",
-		type=list_of_strings,
-		default=r"TQD_trqTrqSetNormal_MAP_v, " 
-				r"VBU_L045A_CWP_05_09T_AImode_CM_single, " 
-				r"Lookup2D_FLOAT32_IEEE, " 
-				r"Lookup2D_X_FLOAT32_IEEE, " 
-				r"Scalar_FLOAT32_IEEE, " 
-				r"TQD_vVehSpd, "
-				r"TQD_vSgndSpd_MAP_y, "
-				r"TQD_pctAccPedPosFlt, "
-				r"TQD_pctAccPdl_MAP_x",
-			help="leaf nodes to search for",
-	)
+    parser.add_argument(
+        "--node-path",
+        type=str,
+        default=r"/PROJECT/MODULE[]",
+        help="node path to search for calibration parameters",
+    )
 
-	parser.add_argument(
-		'--channel', 
-		type=int,
-		default=3,
-		help='CAN channel for flashing')
-		
-	parser.add_argument(
-		'--download_id', 
-		type=int,
-		default=630,
-		help='CAN message ID for downloading')
-		
-	parser.add_argument(
-		'--upload_id', 
-		type=int,
-		default=631,
-		help='CAN message ID for downloading')
-		
-	parser.add_argument(
-		'--input', 
-		type=str,
-        default=repo.working_dir+'/res/download.json',
-		help='Input file path')
-	
-	parser.add_argument(
-		'--output', 
-		type=str, 
-        default=repo.working_dir+'/res/output.json',
-		help='Output file path')
-	return parser
+    parser.add_argument(
+        "--leaves",
+        type=list_of_strings,
+        default=r"TQD_trqTrqSetNormal_MAP_v, "
+        r"VBU_L045A_CWP_05_09T_AImode_CM_single, "
+        r"Lookup2D_FLOAT32_IEEE, "
+        r"Lookup2D_X_FLOAT32_IEEE, "
+        r"Scalar_FLOAT32_IEEE, "
+        r"TQD_vVehSpd, "
+        r"TQD_vSgndSpd_MAP_y, "
+        r"TQD_pctAccPedPosFlt, "
+        r"TQD_pctAccPdl_MAP_x",
+        help="leaf nodes to search for",
+    )
+
+    parser.add_argument(
+        "--channel", type=int, default=3, help="CAN channel for flashing"
+    )
+
+    parser.add_argument(
+        "--download_id", type=int, default=630, help="CAN message ID for downloading"
+    )
+
+    parser.add_argument(
+        "--upload_id", type=int, default=631, help="CAN message ID for downloading"
+    )
+
+    parser.add_argument(
+        "--input",
+        type=str,
+        default=repo.working_dir + "/res/download.json",
+        help="Input file path",
+    )
+
+    parser.add_argument(
+        "--output",
+        type=str,
+        default=repo.working_dir + "/res/output.json",
+        help="Output file path",
+    )
+    return parser
 
 # %% ../nbs/03.xcp.ipynb 21
 def npa_to_packed_buffer(a: np.ndarray) -> str:
-    """ convert a numpy array to a packed string buffer for flashing
+    """convert a numpy array to a packed string buffer for flashing
     TODO: implementation as numpy ufunc
 
     Args:
@@ -149,10 +145,15 @@ def npa_to_packed_buffer(a: np.ndarray) -> str:
         str: packed string buffer for flashing
     """
     b = [struct.pack("<f", x).hex() for x in np.nditer(a)]
-    return ''.join(b)
+    return "".join(b)
 
 # %% ../nbs/03.xcp.ipynb 24
-def flash_xcp(xcp_calib: XCPCalib, data: pd.DataFrame, diff_flashing: bool=False, download: bool=True):
+def flash_xcp(
+    xcp_calib: XCPCalib,
+    data: pd.DataFrame,
+    diff_flashing: bool = False,
+    download: bool = True,
+):
     """Summary
     Flash XCP data to target
 
@@ -161,9 +162,9 @@ def flash_xcp(xcp_calib: XCPCalib, data: pd.DataFrame, diff_flashing: bool=False
         xcp_data (pd.DataFrame): input XCP data to be flashed, replace the value in xcp_calib
         diff_flashing (bool): Use differential flashing
         download (bool): Download or upload
-    
+
     """
-    
+
     # convert dataframe to a hex string to be flashed and assigned to XCPCalib field data
     xcp_calib.data = data.astype(np.float32).tobytes().hex()
 
@@ -172,15 +173,14 @@ def flash_xcp(xcp_calib: XCPCalib, data: pd.DataFrame, diff_flashing: bool=False
             raise NotImplementedError("Differential flashing not implemented yet")
         else:
             pass
-        
-
-    
 
 # %% ../nbs/03.xcp.ipynb 25
 from scapy.all import *
 
 # %% ../nbs/03.xcp.ipynb 51
-if __name__ == "__main__" and "__file__" in globals():  # only run if this file is called directly
+if (
+    __name__ == "__main__" and "__file__" in globals()
+):  # only run if this file is called directly
 
     protocol = inquirer.select(
         message="What's the protocol?",
@@ -208,7 +208,7 @@ if __name__ == "__main__" and "__file__" in globals():  # only run if this file 
     a2l_file_path = inquirer.text(
         message="a2l file path",
         validate=EmptyInputValidator(),
-        default='/res/vbu_ai.json'
+        default="/res/vbu_ai.json",
     ).execute()
 
     # node_path = inquirer.text(
@@ -269,8 +269,8 @@ if __name__ == "__main__" and "__file__" in globals():  # only run if this file 
     args.channel = can_channel
     args.download_id = download_id
     args.upload_id = upload_id
-    args.input = repo.working_dir+input_file_path
-    args.output = repo.working_dir+output_file_path
+    args.input = repo.working_dir + input_file_path
+    args.output = repo.working_dir + output_file_path
     pprint(args)
 
     xcp_calib_from_xcpjson = Get_XCPCalib_From_XCPJSon(args.input)
