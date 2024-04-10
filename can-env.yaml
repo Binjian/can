@@ -51,3 +51,4 @@ dependencies:
     - jupyterlab-quarto
     - pdoc3
     - black[jupyter]
+    - virtualmachine

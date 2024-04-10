@@ -33,16 +33,16 @@ from cantools.database.can.database import Database
 # %% ../../nbs/05.data_link.scapycan.ipynb 5
 from scapy.all import *
 
-# %% ../../nbs/05.data_link.scapycan.ipynb 6
+# %% ../../nbs/05.data_link.scapycan.ipynb 7
 pp = PrettyPrinter(indent=4, width=80, compact=True)
 
-# %% ../../nbs/05.data_link.scapycan.ipynb 7
+# %% ../../nbs/05.data_link.scapycan.ipynb 8
 repo = git.Repo("./", search_parent_directories=True)  # get the Repo object of tspace
 if os.path.basename(repo.working_dir) != "candycan":  # I'm in the parent repo!
     repo = repo.submodule("candycan").module()
 pprint(repo.working_dir)
 
-# %% ../../nbs/05.data_link.scapycan.ipynb 8
+# %% ../../nbs/05.data_link.scapycan.ipynb 9
 def get_argparser() -> argparse.ArgumentParser:
     """_summary_ get CAN bus, dbc config and the message to send
 
@@ -97,7 +97,7 @@ def get_argparser() -> argparse.ArgumentParser:
 
     return parser
 
-# %% ../../nbs/05.data_link.scapycan.ipynb 9
+# %% ../../nbs/05.data_link.scapycan.ipynb 10
 done = threading.Event()
 
 
@@ -109,7 +109,7 @@ def signal_usr1(signum, frame):
     done.set()
     # print("received signal, sending done!")
 
-# %% ../../nbs/05.data_link.scapycan.ipynb 10
+# %% ../../nbs/05.data_link.scapycan.ipynb 11
 def send_msg(
     db: Database,
     message: str,
@@ -157,7 +157,7 @@ def send_msg(
     # with can.interface.Bus(bustype=bus_type, channel=channel, bitrate=bitrate) as bus:
     #     bus.send(message)
 
-# %% ../../nbs/05.data_link.scapycan.ipynb 16
+# %% ../../nbs/05.data_link.scapycan.ipynb 17
 load_layer("can")
 # use native cansocket (SocketCAN)
 conf.contribs["CANSocket"] = {"use_python_can": False}
