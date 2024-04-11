@@ -2,7 +2,6 @@ website:
   sidebar:
     contents:
       - index.ipynb
-      - 00.core.ipynb
       - 01.a2l.ipynb
       - 02.ccp.virtual.ipynb
       - 03.xcp.ipynb
