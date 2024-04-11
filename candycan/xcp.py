@@ -36,16 +36,16 @@ from candycan.a2l import (
     Generate_Init_XCPData_From_A2L,
 )
 
-# %% ../nbs/03.xcp.ipynb 8
+# %% ../nbs/03.xcp.ipynb 9
 pp = PrettyPrinter(indent=4, width=80, compact=True)
 
-# %% ../nbs/03.xcp.ipynb 9
+# %% ../nbs/03.xcp.ipynb 10
 repo = git.Repo("./", search_parent_directories=True)  # get the Repo object of tspace
 if os.path.basename(repo.working_dir) != "candycan":  # I'm in the parent repo!
     repo = repo.submodule("candycan").module()
 pprint(repo.working_dir)
 
-# %% ../nbs/03.xcp.ipynb 10
+# %% ../nbs/03.xcp.ipynb 11
 def get_argparser() -> argparse.ArgumentParser:
     """Summary
     Get argument parser for command line arguments
@@ -133,7 +133,7 @@ def get_argparser() -> argparse.ArgumentParser:
     )
     return parser
 
-# %% ../nbs/03.xcp.ipynb 21
+# %% ../nbs/03.xcp.ipynb 22
 def npa_to_packed_buffer(a: np.ndarray) -> str:
     """convert a numpy array to a packed string buffer for flashing
     TODO: implementation as numpy ufunc
@@ -147,7 +147,7 @@ def npa_to_packed_buffer(a: np.ndarray) -> str:
     b = [struct.pack("<f", x).hex() for x in np.nditer(a)]
     return "".join(b)
 
-# %% ../nbs/03.xcp.ipynb 24
+# %% ../nbs/03.xcp.ipynb 25
 def flash_xcp(
     xcp_calib: XCPCalib,
     data: pd.DataFrame,
@@ -174,7 +174,7 @@ def flash_xcp(
         else:
             pass
 
-# %% ../nbs/03.xcp.ipynb 25
+# %% ../nbs/03.xcp.ipynb 26
 from scapy.all import *
 
 # %% ../nbs/03.xcp.ipynb 51

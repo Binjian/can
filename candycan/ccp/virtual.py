@@ -72,7 +72,7 @@ from scapy.all import (
 # Ether, TCP, hexdump, raw, rdpcap, load_contrib, conf, load_layer,
 # CANSocket, CAN, wrpcap, CCP, CRO, CONNECT, GET_SEED, UNLOCK, GET_DAQ_SIZE
 
-# %% ../../nbs/02.ccp.virtual.ipynb 11
+# %% ../../nbs/02.ccp.virtual.ipynb 12
 load_layer("can")  # CAN
 conf.contribs["CANSocket"] = {"use-python-can": False}
 load_contrib("cansocket")  # CANSocket
@@ -80,16 +80,16 @@ load_contrib(
     "automotive.ccp"
 )  # CCP, CRO, CONNECT, DISCONNECT, GET_SEED, UNLOCK, GET_DAQ_SIZE
 
-# %% ../../nbs/02.ccp.virtual.ipynb 12
+# %% ../../nbs/02.ccp.virtual.ipynb 13
 pp = PrettyPrinter(indent=4, width=80, compact=True)
 
-# %% ../../nbs/02.ccp.virtual.ipynb 13
+# %% ../../nbs/02.ccp.virtual.ipynb 14
 repo = git.Repo("./", search_parent_directories=True)  # get the Repo object of tspace
 if os.path.basename(repo.working_dir) != "candycan":  # I'm in the parent repo!
     repo = repo.submodule("candycan").module()
 pprint(repo.working_dir)
 
-# %% ../../nbs/02.ccp.virtual.ipynb 14
+# %% ../../nbs/02.ccp.virtual.ipynb 15
 def get_argparser() -> argparse.ArgumentParser:
     """Summary
     Get argument parser for command line arguments
@@ -231,14 +231,14 @@ def get_argparser() -> argparse.ArgumentParser:
     )
     return parser
 
-# %% ../../nbs/02.ccp.virtual.ipynb 19
+# %% ../../nbs/02.ccp.virtual.ipynb 20
 CAN_TYPES = set(["NATIVE", "PYTHON"])  # Navtive: Native CAN: PYTHON: Python CAN
 # class CanType(StrEnum):
 #     NATIVE = "NATIVE"
 #     PYTHON = "PYTHON"
 CAN_TYPES
 
-# %% ../../nbs/02.ccp.virtual.ipynb 20
+# %% ../../nbs/02.ccp.virtual.ipynb 21
 def check_can_type(c: str) -> str:
     """Summary
     Check if the CAN type is valid
@@ -259,7 +259,7 @@ def check_can_type(c: str) -> str:
 
 CANType = Annotated[str, AfterValidator(check_can_type)]
 
-# %% ../../nbs/02.ccp.virtual.ipynb 22
+# %% ../../nbs/02.ccp.virtual.ipynb 23
 BUS_TYPES = set(
     ["SOCKET", "VIRTUAL", "KVASER", "PCANUSB", "IXXAT", "VECTOR", "SERIAL", "NEOVI"]
 )
@@ -273,7 +273,7 @@ BUS_TYPES = set(
 #     SERIAL = "SERIAL"
 #     NEOVI = "NEOVI"
 
-# %% ../../nbs/02.ccp.virtual.ipynb 23
+# %% ../../nbs/02.ccp.virtual.ipynb 24
 def check_bus_type(b: str) -> str:
     """Summary
     Check if the CAN bus type is valid
@@ -296,7 +296,7 @@ def check_bus_type(b: str) -> str:
 
 BusType = Annotated[str, AfterValidator(check_bus_type)]
 
-# %% ../../nbs/02.ccp.virtual.ipynb 24
+# %% ../../nbs/02.ccp.virtual.ipynb 25
 class CANFilter(BaseModel):
     """Summary
     CAN filter for Python CAN bus
@@ -313,7 +313,7 @@ class CANFilter(BaseModel):
         default=0x7FF, gt=0, title="CAN message mask", description="CAN message mask"
     )
 
-# %% ../../nbs/02.ccp.virtual.ipynb 25
+# %% ../../nbs/02.ccp.virtual.ipynb 26
 class ScapyCANSpecs(BaseModel):
     can_type: CANType = Field(
         frozen=True, default="NATIVE", description="CAN type: NATIVE/PYTHON"
@@ -376,7 +376,7 @@ class ScapyCANSpecs(BaseModel):
                     f"Bus type: {self.bus_type} not implemented yet"
                 )
 
-# %% ../../nbs/02.ccp.virtual.ipynb 41
+# %% ../../nbs/02.ccp.virtual.ipynb 42
 def npa_to_packed_buffer(a: np.ndarray) -> str:
     """convert a numpy array to a packed string buffer for flashing
     TODO: implementation as numpy ufunc
@@ -390,7 +390,7 @@ def npa_to_packed_buffer(a: np.ndarray) -> str:
     b = [struct.pack("<f", x).hex() for x in np.nditer(a)]
     return "".join(b)
 
-# %% ../../nbs/02.ccp.virtual.ipynb 45
+# %% ../../nbs/02.ccp.virtual.ipynb 46
 def flash_xcp(
     xcp_calib: XCPCalib,
     data: pd.DataFrame,
@@ -417,7 +417,7 @@ def flash_xcp(
         else:
             pass
 
-# %% ../../nbs/02.ccp.virtual.ipynb 83
+# %% ../../nbs/02.ccp.virtual.ipynb 84
 def downlod_calib_data(
     xcp_calib: XCPCalib,
     can_type: CANType,
@@ -562,7 +562,7 @@ def downlod_calib_data(
     dto = sock.sr1(cro, timeout=timeout)
     assert dto.return_code == 0x00
 
-# %% ../../nbs/02.ccp.virtual.ipynb 85
+# %% ../../nbs/02.ccp.virtual.ipynb 86
 def upload_calib_data(
     xcp_calib: XCPCalib,
     can_type: CANType,
@@ -716,7 +716,7 @@ def upload_calib_data(
     dto = sock.sr1(cro, timeout=timeout)
     assert dto.return_code == 0x00
 
-# %% ../../nbs/02.ccp.virtual.ipynb 87
+# %% ../../nbs/02.ccp.virtual.ipynb 88
 @contextlib.contextmanager
 def can_context(can_specs: ScapyCANSpecs):
     """Summary
@@ -803,7 +803,7 @@ def can_context(can_specs: ScapyCANSpecs):
         can_specs.cntr += 1
         assert dto.return_code == 0x00
 
-# %% ../../nbs/02.ccp.virtual.ipynb 88
+# %% ../../nbs/02.ccp.virtual.ipynb 89
 @contextlib.contextmanager
 def SET_MTA_context(can_specs: ScapyCANSpecs, sock: CANSocket, data: XCPData) -> CAN:
     """Summary
@@ -834,7 +834,7 @@ def SET_MTA_context(can_specs: ScapyCANSpecs, sock: CANSocket, data: XCPData) ->
     finally:
         pass  # do nothing, just pray it'll be OK. Crapy CCP!
 
-# %% ../../nbs/02.ccp.virtual.ipynb 89
+# %% ../../nbs/02.ccp.virtual.ipynb 90
 @contextlib.contextmanager
 def XLOAD_context(
     can_specs: ScapyCANSpecs,
@@ -899,7 +899,7 @@ def XLOAD_context(
     finally:
         pass  # do nothing, just pray it'll be OK. Crapy CCP!
 
-# %% ../../nbs/02.ccp.virtual.ipynb 92
+# %% ../../nbs/02.ccp.virtual.ipynb 93
 def upload_calib_data2(xcp_calib: XCPCalib, can_specs: ScapyCANSpecs) -> None:
     """Summary
     Upload XCP calibration data from target to host, the result will update the xcp_calib.data field
@@ -960,7 +960,7 @@ def upload_calib_data2(xcp_calib: XCPCalib, can_specs: ScapyCANSpecs) -> None:
     except Exception as e:
         print(e)
 
-# %% ../../nbs/02.ccp.virtual.ipynb 93
+# %% ../../nbs/02.ccp.virtual.ipynb 94
 def downlod_calib_data2(xcp_calib: XCPCalib, can_specs: ScapyCANSpecs) -> None:
     """Summary
     Download XCP calibration data to target use scapy_can_context

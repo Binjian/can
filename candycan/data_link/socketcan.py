@@ -33,13 +33,13 @@ from cantools.database.can.database import Database
 # %% ../../nbs/04.data_link.socketcan.ipynb 5
 pp = PrettyPrinter(indent=4, width=80, compact=True)
 
-# %% ../../nbs/04.data_link.socketcan.ipynb 6
+# %% ../../nbs/04.data_link.socketcan.ipynb 7
 repo = git.Repo("./", search_parent_directories=True)  # get the Repo object of tspace
 if os.path.basename(repo.working_dir) != "candycan":  # I'm in the parent repo!
     repo = repo.submodule("candycan").module()
 pprint(repo.working_dir)
 
-# %% ../../nbs/04.data_link.socketcan.ipynb 7
+# %% ../../nbs/04.data_link.socketcan.ipynb 8
 def get_argparser() -> argparse.ArgumentParser:
     """_summary_ get CAN bus, dbc config and the message to send
 
@@ -94,7 +94,7 @@ def get_argparser() -> argparse.ArgumentParser:
 
     return parser
 
-# %% ../../nbs/04.data_link.socketcan.ipynb 8
+# %% ../../nbs/04.data_link.socketcan.ipynb 9
 done = threading.Event()
 
 
@@ -106,7 +106,7 @@ def signal_usr1(signum, frame):
     done.set()
     # print("received signal, sending done!")
 
-# %% ../../nbs/04.data_link.socketcan.ipynb 9
+# %% ../../nbs/04.data_link.socketcan.ipynb 10
 def send_msg(
     db: Database,
     message: str,
@@ -135,7 +135,7 @@ def send_msg(
     with can.interface.Bus(bustype=bus_type, channel=channel, bitrate=bitrate) as bus:
         bus.send(message)
 
-# %% ../../nbs/04.data_link.socketcan.ipynb 18
+# %% ../../nbs/04.data_link.socketcan.ipynb 17
 def receive_message(message_proxy: DictProxy, bus: can.interface.Bus) -> None:
     print("waiting for message")
     msg: can.Message = bus.recv()
@@ -144,7 +144,7 @@ def receive_message(message_proxy: DictProxy, bus: can.interface.Bus) -> None:
     message_proxy["arbitration_id"] = msg.arbitration_id
     message_proxy["data"] = msg.data
 
-# %% ../../nbs/04.data_link.socketcan.ipynb 28
+# %% ../../nbs/04.data_link.socketcan.ipynb 26
 if (
     __name__ == "__main__" and "__file__" in globals()
 ):  # in order to be compatible for both script and notebnook
